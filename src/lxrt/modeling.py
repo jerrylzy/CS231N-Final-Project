@@ -580,6 +580,33 @@ class BertPooler(nn.Module):
         pooled_output = self.activation(pooled_output)
         return pooled_output
 
+# 231
+class BertMeanPooler(nn.Module):
+    def __init__(self, config):
+        super(BertMeanPooler, self).__init__()
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.activation = nn.ReLU()
+
+    def forward(self, hidden_states):
+        # We "pool" the model by simply taking the average of the hidden states
+        avg_token_tensor = torch.mean(hidden_states, dim=1)
+        pooled_output = self.dense(avg_token_tensor)
+        pooled_output = self.activation(pooled_output)
+        return pooled_output
+
+class VisionMeanPooler(nn.Module):
+    def __init__(self, config):
+        super(BertMeanPooler, self).__init__()
+        self.dense = nn.Linear(VISUAL_CONFIG.visual_feat_dim, config.hidden_size)
+        self.activation = nn.ReLU()
+
+    def forward(self, hidden_states):
+        # We "pool" the model by simply taking the average of the hidden states
+        avg_token_tensor = torch.mean(hidden_states, dim=1)
+        pooled_output = self.dense(avg_token_tensor)
+        pooled_output = self.activation(pooled_output)
+        return pooled_output
+
 
 class BertPredictionHeadTransform(nn.Module):
     def __init__(self, config):
@@ -840,6 +867,9 @@ class LXRTModel(BertPreTrainedModel):
         self.embeddings = BertEmbeddings(config)
         self.encoder = LXRTEncoder(config)
         self.pooler = BertPooler(config)
+        # 231
+        # self.pooler = BertMeanPooler(config)
+        # self.pooler = VisionMeanPooler(config)
         self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None,
@@ -882,6 +912,8 @@ class LXRTModel(BertPreTrainedModel):
             visn_feats=visual_feats,
             visn_attention_mask=extended_visual_attention_mask)
         pooled_output = self.pooler(lang_feats)
+        # 231
+        # pooled_output = self.pooler(visn_feats)
 
         return (lang_feats, visn_feats), pooled_output
 
@@ -977,7 +1009,7 @@ class LXRTPretraining(BertPreTrainedModel):
             answer_loss = loss_fct(
                 answer_score.view(-1, self.num_answers),
                 ans.view(-1)
-            )  
+            )
             # Since this Github version pre-trains with QA loss from the beginning,
             # I exclude "*2" here to match the effect of QA losses.
             # Previous: (loss *0) for 6 epochs, (loss *2) for 6 epochs.   (Used 10 instead of 6 in EMNLP paper)
@@ -1010,7 +1042,9 @@ class LXRTFeatureExtraction(BertPreTrainedModel):
                                             visual_feats=visual_feats,
                                             visual_attention_mask=visual_attention_mask)
         if 'x' == self.mode:
-            return pooled_output
+            # 231
+            # return pooled_output
+            return feat_seq, pooled_output
         elif 'x' in self.mode and ('l' in self.mode or 'r' in self.mode):
             return feat_seq, pooled_output
         elif 'l' in self.mode or 'r' in self.mode:

@@ -12,6 +12,7 @@ from tqdm import tqdm
 from param import args
 from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.vqa_model import VQAModel
+from tasks.vqa_atten_model import VQAModelAttn
 from tasks.vqa_data import VQADataset, VQATorchDataset, VQAEvaluator
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
@@ -45,7 +46,7 @@ class VQA:
             self.valid_tuple = None
         
         # Model
-        self.model = VQAModel(self.train_tuple.dataset.num_answers)
+        self.model = VQAModelAttn(self.train_tuple.dataset.num_answers)
 
         # Load pre-trained weights
         if args.load_lxmert is not None:

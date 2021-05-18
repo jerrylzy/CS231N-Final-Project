@@ -14,14 +14,14 @@ MAX_VQA_LENGTH = 20
 class VQAModel(nn.Module):
     def __init__(self, num_answers):
         super().__init__()
-        
+
         # Build LXRT encoder
         self.lxrt_encoder = LXRTEncoder(
             args,
             max_seq_length=MAX_VQA_LENGTH
         )
         hid_dim = self.lxrt_encoder.dim
-        
+
         # VQA Answer heads
         self.logit_fc = nn.Sequential(
             nn.Linear(hid_dim, hid_dim * 2),
@@ -30,6 +30,31 @@ class VQAModel(nn.Module):
             nn.Linear(hid_dim * 2, num_answers)
         )
         self.logit_fc.apply(self.lxrt_encoder.model.init_bert_weights)
+
+        # self.logit_fc = nn.Sequential(
+        #     nn.Linear(hid_dim, hid_dim),
+        #     nn.LeakyReLU(),
+        #     BertLayerNorm(hid_dim, eps=1e-12),
+        #     nn.Linear(hid_dim, hid_dim * 2),
+        #     nn.ReLU(),
+        #     BertLayerNorm(hid_dim * 2, eps=1e-12),
+        #     nn.Linear(hid_dim * 2, num_answers),
+        # )
+
+        #  231 Alternative VQA Answer heads
+        # self.logit_alt = nn.Sequential(
+        #     nn.Tanh(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(hid_dim, num_answers),
+        #     nn.Tanh(),
+        #     # BertLayerNorm(num_answers, eps=1e-12),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(num_answers, num_answers)
+        # )
+
+        # can also change the loss function to be
+        # nn.KLDivLoss, need to convert scores to log probs first
+        # add nn.LogSoftmax(dim=-1)
 
     def forward(self, feat, pos, sent):
         """
@@ -41,7 +66,7 @@ class VQAModel(nn.Module):
         :param leng: (b,) Type -- int numpy array
         :return: (b, num_answer) The logit of each answers.
         """
-        x = self.lxrt_encoder(sent, (feat, pos))
+        _, x = self.lxrt_encoder(sent, (feat, pos))
         logit = self.logit_fc(x)
 
         return logit
