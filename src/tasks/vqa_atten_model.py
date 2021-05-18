@@ -6,7 +6,7 @@ import torch
 from param import args
 from lxrt.entry import LXRTEncoder
 from lxrt.modeling import BertLayerNorm, GeLU
-from lxrt.modeling import LXRTFeatureExtraction as VISUAL_CONFIG
+from lxrt.modeling import VISUAL_CONFIG
 
 # Max length including <bos> and <eos>
 MAX_VQA_LENGTH = 20
