@@ -15,10 +15,12 @@ from tasks.vqa_model import VQAModel
 from tasks.vqa_atten_model import VQAModelAttn
 from tasks.vqa_data import VQADataset, VQATorchDataset, VQAEvaluator
 
+import matplotlib.pyplot as plt
+
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
 
-def get_data_tuple(splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
+def get_data_tuple(splits: str, bs: int, shuffle=False, drop_last=False) -> DataTuple:
     dset = VQADataset(splits)
     tset = VQATorchDataset(dset)
     evaluator = VQAEvaluator(dset)
@@ -44,7 +46,7 @@ class VQA:
             )
         else:
             self.valid_tuple = None
-        
+
         # Model
         self.model = VQAModel(self.train_tuple.dataset.num_answers)
 
@@ -54,7 +56,7 @@ class VQA:
         if args.load_lxmert_qa is not None:
             load_lxmert_qa(args.load_lxmert_qa, self.model,
                            label2ans=self.train_tuple.dataset.label2ans)
-        
+
         # GPU options
         self.model = self.model.cuda()
         if args.multiGPU:
@@ -73,7 +75,7 @@ class VQA:
                                   t_total=t_total)
         else:
             self.optim = args.optimizer(self.model.parameters(), args.lr)
-        
+
         # Output Directory
         self.output = args.output
         os.makedirs(self.output, exist_ok=True)
@@ -136,7 +138,7 @@ class VQA:
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
         for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent = datum_tuple[:4]   # Avoid seeing ground truth
+            ques_id, feats, boxes, sent = datum_tuple[:4]  # Avoid seeing ground truth
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
                 logit = self.model(feats, boxes, sent)
@@ -148,6 +150,28 @@ class VQA:
             evaluator.dump_result(quesid2ans, dump)
         return quesid2ans
 
+    def plot_confidence(self, eval_tuple: DataTuple, dump=None):
+        # plot confidence bar graph for one example
+        self.model.eval()
+        dset, loader, evaluator = eval_tuple
+        datum_tuple = next(iter(loader))[0]
+        ques_id, feats, boxes, sent, _, img_id = datum_tuple
+        with torch.no_grad():
+            feats, boxes = feats.cuda(), boxes.cuda()
+            logit = self.model(feats.unsqueeze(0), boxes.unsqueeze(0), sent.unsqueeze(0))
+            scores, labels = torch.topk(logit.squeeze(0), 5, dim=1)
+            answers = []
+            scores = scores.cpu().numpy() * 100
+            for label in labels.cpu().numpy():
+                answers.append(dset.label2ans[label])
+            plt.bar(answers, scores)
+            plt.xlabel('Answers')
+            plt.ylabel('Confidence')
+            plt.title('Predicted confidence of top-5 answers')
+            plt.savefig('SampleQuestionConfidence.png', format='png')
+            print('image id: ', img_id)
+            print('question id: ', ques_id)
+
     def evaluate(self, eval_tuple: DataTuple, dump=None):
         """Evaluate all data in data_tuple."""
         quesid2ans = self.predict(eval_tuple, dump)
@@ -157,7 +181,7 @@ class VQA:
     def oracle_score(data_tuple):
         dset, loader, evaluator = data_tuple
         quesid2ans = {}
-        for i, (ques_id, feats, boxes, sent, target, _) in enumerate(loader):
+        for i, (ques_id, feats, boxes, sent, target) in enumerate(loader):
             _, label = target.max(1)
             for qid, l in zip(ques_id, label.cpu().numpy()):
                 ans = dset.label2ans[l]
@@ -185,22 +209,22 @@ if __name__ == "__main__":
 
     # Test or Train
     if args.test is not None:
-        args.fast = args.tiny = False       # Always loading all data in test
+        args.fast = args.tiny = False  # Always loading all data in test
         if 'test' in args.test:
             vqa.predict(
                 get_data_tuple(args.test, bs=950,
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'test_predict.json')
             )
-        elif 'val' in args.test:    
+        elif 'val' in args.test:
             # Since part of valididation data are used in pre-training/fine-tuning,
             # only validate on the minival set.
-            result = vqa.evaluate(
+            # create bar graph for top answers
+            vqa.plot_confidence(
                 get_data_tuple('minival', bs=950,
-                               shuffle=False, drop_last=False),
+                               shuffle=True, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json')
             )
-            print(result)
         else:
             assert False, "No such test option for %s" % args.test
     else:
