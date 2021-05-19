@@ -46,7 +46,7 @@ class VQA:
             self.valid_tuple = None
         
         # Model
-        self.model = VQAModelAttn(self.train_tuple.dataset.num_answers)
+        self.model = VQAModel(self.train_tuple.dataset.num_answers)
 
         # Load pre-trained weights
         if args.load_lxmert is not None:
