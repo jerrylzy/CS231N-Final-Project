@@ -35,12 +35,12 @@ class VQAModelAttn(nn.Module):
             max_seq_length=MAX_VQA_LENGTH
         )
         hid_dim = self.lxrt_encoder.dim
-        self.concat_dim = VISUAL_CONFIG.visual_feat_dim + hid_dim
+        self.concat_dim = 2 * hid_dim
 
         self.proj_a = GatedTanh(self.concat_dim, hid_dim)
         self.wa = nn.Linear(hid_dim, 1)
         self.proj_q = GatedTanh(hid_dim, hid_dim)
-        self.proj_v = GatedTanh(VISUAL_CONFIG.visual_feat_dim, hid_dim)
+        self.proj_v = GatedTanh(hid_dim, hid_dim)
         self.proj_h = GatedTanh(hid_dim, hid_dim)
         self.output_layer = nn.Linear(hid_dim, num_answers)
 

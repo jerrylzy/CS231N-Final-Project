@@ -18,7 +18,7 @@ from tasks.vqa_data import VQADataset, VQATorchDataset, VQAEvaluator
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
 
-def get_data_tuple(splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
+def get_data_tuple(splits: str, bs: int, shuffle=False, drop_last=False) -> DataTuple:
     dset = VQADataset(splits)
     tset = VQATorchDataset(dset)
     evaluator = VQAEvaluator(dset)
@@ -44,9 +44,15 @@ class VQA:
             )
         else:
             self.valid_tuple = None
-        
+
+        # model ensemble
+        self.models = []
         # Model
-        self.model = VQAModel(self.train_tuple.dataset.num_answers)
+        self.model1 = VQAModel(self.train_tuple.dataset.num_answers)
+        self.model2 = VQAModel(self.train_tuple.dataset.num_answers)
+        self.model3 = VQAModel(self.train_tuple.dataset.num_answers)
+        # TODO: ADD MORE MODELS HERE
+        self.models = [self.model1, self.model2, self.model3]
 
         # Load pre-trained weights
         if args.load_lxmert is not None:
@@ -54,26 +60,28 @@ class VQA:
         if args.load_lxmert_qa is not None:
             load_lxmert_qa(args.load_lxmert_qa, self.model,
                            label2ans=self.train_tuple.dataset.label2ans)
-        
+
         # GPU options
-        self.model = self.model.cuda()
-        if args.multiGPU:
-            self.model.lxrt_encoder.multi_gpu()
+        # self.model = self.model.cuda()
+        self.model1 = self.model1.cuda()
+
+        # if args.multiGPU:
+        #     self.model.lxrt_encoder.multi_gpu()
 
         # Loss and Optimizer
         self.bce_loss = nn.BCEWithLogitsLoss()
-        if 'bert' in args.optim:
-            batch_per_epoch = len(self.train_tuple.loader)
-            t_total = int(batch_per_epoch * args.epochs)
-            print("BertAdam Total Iters: %d" % t_total)
-            from lxrt.optimization import BertAdam
-            self.optim = BertAdam(list(self.model.parameters()),
-                                  lr=args.lr,
-                                  warmup=0.1,
-                                  t_total=t_total)
-        else:
-            self.optim = args.optimizer(self.model.parameters(), args.lr)
-        
+        # if 'bert' in args.optim:
+        #     batch_per_epoch = len(self.train_tuple.loader)
+        #     t_total = int(batch_per_epoch * args.epochs)
+        #     print("BertAdam Total Iters: %d" % t_total)
+        #     from lxrt.optimization import BertAdam
+        #     self.optim = BertAdam(list(self.model.parameters()),
+        #                           lr=args.lr,
+        #                           warmup=0.1,
+        #                           t_total=t_total)
+        # else:
+        #     self.optim = args.optimizer(self.model.parameters(), args.lr)
+
         # Output Directory
         self.output = args.output
         os.makedirs(self.output, exist_ok=True)
@@ -85,7 +93,7 @@ class VQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, target, _) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, target) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
@@ -132,15 +140,23 @@ class VQA:
         :param dump: The path of saved file to dump results.
         :return: A dict of question_id to answer.
         """
-        self.model.eval()
+        for model in self.models:
+            model.eval()
+        # self.model.eval()
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
         for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent = datum_tuple[:4]   # Avoid seeing ground truth
+            ques_id, feats, boxes, sent = datum_tuple[:4]  # Avoid seeing ground truth
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
-                logit = self.model(feats, boxes, sent)
-                score, label = logit.max(1)
+                batch_size = feats.shape[0]
+                final_logit = torch.zeros(batch_size, dset.num_answers)
+                for model in self.models:
+                    logit = model(feats, boxes, sent)
+                    logit = nn.softmax(dim=1)(logit)
+                    final_logit += logit / (torch.argsort(logit, dim=1) + 1).float()
+
+                score, label = final_logit.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid.item()] = ans
@@ -157,7 +173,7 @@ class VQA:
     def oracle_score(data_tuple):
         dset, loader, evaluator = data_tuple
         quesid2ans = {}
-        for i, (ques_id, feats, boxes, sent, target, _) in enumerate(loader):
+        for i, (ques_id, feats, boxes, sent, target) in enumerate(loader):
             _, label = target.max(1)
             for qid, l in zip(ques_id, label.cpu().numpy()):
                 ans = dset.label2ans[l]
@@ -173,6 +189,14 @@ class VQA:
         state_dict = torch.load("%s.pth" % path)
         self.model.load_state_dict(state_dict)
 
+    def load_multiple(self):
+        # TODO: FILL IN THE PATHS
+        paths = ['snap/vqa/vqa_lxr955/BEST', ]
+        for i, path in enumerate(paths):
+            print("Load model from %s" % path)
+            state_dict = torch.load("%s.pth" % path)
+            self.models[i].load_state_dict(state_dict)
+
 
 if __name__ == "__main__":
     # Build Class
@@ -180,19 +204,20 @@ if __name__ == "__main__":
 
     # Load VQA model weights
     # Note: It is different from loading LXMERT pre-trained weights.
-    if args.load is not None:
-        vqa.load(args.load)
+    # if args.load is not None:
+    #     vqa.load(args.load)
+    vqa.load_multiple()
 
     # Test or Train
     if args.test is not None:
-        args.fast = args.tiny = False       # Always loading all data in test
+        args.fast = args.tiny = False  # Always loading all data in test
         if 'test' in args.test:
             vqa.predict(
                 get_data_tuple(args.test, bs=950,
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'test_predict.json')
             )
-        elif 'val' in args.test:    
+        elif 'val' in args.test:
             # Since part of valididation data are used in pre-training/fine-tuning,
             # only validate on the minival set.
             result = vqa.evaluate(
