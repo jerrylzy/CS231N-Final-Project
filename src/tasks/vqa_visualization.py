@@ -164,7 +164,7 @@ class VQA:
                 logit = nn.Softmax(dim=1)(logit)
 
                 for i in range(5):
-                    attn_wgts = torch.load('../../snap/attn_wgts_{}.pt'.format(i))
+                    attn_wgts = torch.load('attn_wgts_{}.pt'.format(i))
 
                 scores, labels = torch.topk(logit, 5, dim=1)
                 print(scores)
