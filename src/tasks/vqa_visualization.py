@@ -160,7 +160,8 @@ class VQA:
         self.model.eval()
         dset, loader, evaluator = eval_tuple
 
-        sample = random.randint(0, len(loader) - 1)
+        # sample = random.randint(0, len(loader) - 1)
+        sample = 250
 
         for i, datum_tuple in enumerate(loader):
             if i == sample:
