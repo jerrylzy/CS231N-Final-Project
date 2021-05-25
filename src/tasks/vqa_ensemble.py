@@ -155,7 +155,7 @@ class VQA:
                 final_logit = torch.zeros(batch_size, dset.num_answers)
                 for model in self.models:
                     logit = model(feats, boxes, sent)
-                    logit = nn.softmax(dim=1)(logit)
+                    logit = nn.Softmax(dim=1)(logit)
                     final_logit += logit / (torch.argsort(logit, dim=1) + 1).float()
 
                 score, label = final_logit.max(1)
