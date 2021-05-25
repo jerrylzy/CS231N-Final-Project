@@ -153,7 +153,7 @@ class VQA:
                 feats, boxes = feats.cuda(), boxes.cuda()
                 batch_size = feats.shape[0]
                 # final_logit = torch.zeros(batch_size, dset.num_answers)
-                labels = torch.zeros(len(self.models), batch_size).cuda()
+                labels = torch.zeros(len(self.models), batch_size).int().cuda()
                 for model in self.models:
                     logit = model(feats, boxes, sent)
                     # logit = nn.Softmax(dim=1)(logit)
