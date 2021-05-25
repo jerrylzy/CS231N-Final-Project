@@ -161,7 +161,7 @@ class VQA:
                     score, label = logit.max(1)
                     labels[i] = label
                 # score, label = final_logit.max(1)
-                label = torch.mode(labels, dim=0)
+                label, _ = torch.mode(labels, dim=0)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid.item()] = ans
