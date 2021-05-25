@@ -456,7 +456,7 @@ class LXRTXLayer(nn.Module):
     def cross_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask, layer_idx):
         # Cross Attention
         lang_att_output, attn_wgts = self.visual_attention(lang_input, visn_input, ctx_att_mask=visn_attention_mask)
-        torch.save(attn_wgts, '../../snap/attn_wgts_{}.pt'.format(layer_idx))
+        torch.save(attn_wgts, 'attn_wgts_{}.pt'.format(layer_idx))
         visn_att_output, _ = self.visual_attention(visn_input, lang_input, ctx_att_mask=lang_attention_mask)
         return lang_att_output, visn_att_output
 
