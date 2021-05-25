@@ -159,6 +159,10 @@ class VQA:
         with torch.no_grad():
             feats, boxes = feats.cuda(), boxes.cuda()
             logit = self.model(feats.unsqueeze(0), boxes.unsqueeze(0), sent.unsqueeze(0))
+
+            for i in range(5):
+                attn_wgts = torch.load('../../snap/attn_wgts_{}.pt'.format(i))
+
             scores, labels = torch.topk(logit.squeeze(0), 5, dim=1)
             answers = []
             scores = scores.cpu().numpy() * 100
