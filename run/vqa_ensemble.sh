@@ -11,7 +11,6 @@ cp $0 $output/run.bash
 CUDA_VISIBLE_DEVICES=$1 PYTHONPATH=$PYTHONPATH:./src \
     python src/tasks/vqa_ensemble.py \
     --tiny --train train --valid ""  \
-    --test minival \
     --llayers 9 --xlayers 5 --rlayers 5 \
     --batchSize 32 --optim bert --lr 5e-5 --epochs 4 \
     --tqdm --output $output ${@:3}
