@@ -185,15 +185,15 @@ class VQA:
                     fig = go.Figure(data=[go.Bar(
                         x=scores, y=answers,
                         text=scores,
-                        textposition='outside',
+                        textposition='auto',
                         orientation='h',
                         marker=dict(color='lightsalmon')
                     )])
                     fig.update_traces(texttemplate='%{text:.3s}')
                     fig.update_layout(
                         title='Predicted confidence of top-5 answers',
-                        xaxis_title='Answers',
-                        yaxis_title='Confidence'
+                        yaxis_title='Answers',
+                        xaxis_title='Confidence'
                     )
                     fig.write_image('SampleQuestionConfidence.png')
 
