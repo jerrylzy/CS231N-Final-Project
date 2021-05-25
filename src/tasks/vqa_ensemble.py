@@ -64,6 +64,8 @@ class VQA:
         # GPU options
         # self.model = self.model.cuda()
         self.model1 = self.model1.cuda()
+        self.model2 = self.model2.cuda()
+        self.model3 = self.model3.cuda()
 
         # if args.multiGPU:
         #     self.model.lxrt_encoder.multi_gpu()
@@ -93,7 +95,7 @@ class VQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, target) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, target, _, _) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
@@ -191,7 +193,11 @@ class VQA:
 
     def load_multiple(self):
         # TODO: FILL IN THE PATHS
-        paths = ['snap/vqa/vqa_lxr955/BEST', ]
+        paths = ['snap/vqa/vqa_lxr955/BEST',
+                 'snap/vqa/vqa_bert_mean/BEST',
+                 # 'snap/vqa/vqa_head1/BEST',
+                 # 'snap/vqa/vqa_head2/BEST',
+                 'snap/vqa/vqa_visn_mean/BEST',]
         for i, path in enumerate(paths):
             print("Load model from %s" % path)
             state_dict = torch.load("%s.pth" % path)
