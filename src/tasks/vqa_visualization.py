@@ -20,7 +20,7 @@ import plotly.graph_objects as go
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from PIL import Image
+import cv2
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
@@ -172,20 +172,10 @@ class VQA:
 
                     original_boxes = original_boxes[0][1].cpu().numpy()
 
-                    im = Image.open('COCO_val2014_000000572477.jpg')
-                    # Create figure and axes
-                    fig, ax = plt.subplots()
+                    im = cv2.imread('COCO_val2014_000000572477.jpg')
+                    image = cv2.rectangle(im, (original_boxes[0],original_boxes[1]), (original_boxes[2],original_boxes[3]), (0,0,255), 2)
+                    cv2.imwrite('bbCOCO_val2014_000000572477.jpg', image)
 
-                    # Display the image
-                    ax.imshow(im)
-
-                    # Create a Rectangle patch
-                    rect = patches.Rectangle((original_boxes[0],original_boxes[1]), original_boxes[2]-original_boxes[0], original_boxes[3]-original_boxes[1], linewidth=1, edgecolor='r', facecolor='none')
-
-                    # Add the patch to the Axes
-                    ax.add_patch(rect)
-
-                    plt.savefig('bbCOCO_val2014_000000572477.jpg')
 
                     feats, boxes = feats.cuda(), boxes.cuda()
                     logit = self.model(feats, boxes, sent)
