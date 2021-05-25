@@ -154,12 +154,12 @@ class VQA:
                 batch_size = feats.shape[0]
                 # final_logit = torch.zeros(batch_size, dset.num_answers)
                 labels = torch.zeros(len(self.models), batch_size).int().cuda()
-                for model in self.models:
+                for j, model in enumerate(self.models):
                     logit = model(feats, boxes, sent)
                     # logit = nn.Softmax(dim=1)(logit)
                     # final_logit += logit / (torch.argsort(logit, dim=1) + 1).float()
                     score, label = logit.max(1)
-                    labels[i] = label
+                    labels[j] = label
                 # score, label = final_logit.max(1)
                 label, _ = torch.mode(labels, dim=0)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
