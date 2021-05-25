@@ -154,28 +154,35 @@ class VQA:
         # plot confidence bar graph for one example
         self.model.eval()
         dset, loader, evaluator = eval_tuple
-        datum_tuple = next(iter(loader))
-        ques_id, feats, boxes, sent, _, img_id = datum_tuple
-        ques_id, feats, boxes, sent, img_id = ques_id[0], feats[0], boxes[0], sent[0], img_id[0]
-        with torch.no_grad():
-            feats, boxes = feats.cuda(), boxes.cuda()
-            logit = self.model(feats, boxes, sent)
 
-            for i in range(5):
-                attn_wgts = torch.load('../../snap/attn_wgts_{}.pt'.format(i))
+        for i, datum_tuple in enumerate(loader):
+            ques_id, feats, boxes, sent, _, img_id = datum_tuple
+            with torch.no_grad():
+                feats, boxes = feats.cuda(), boxes.cuda()
+                logit = self.model(feats, boxes, sent)
+                print(logit)
+                logit = nn.Softmax(dim=1)(logit)
 
-            scores, labels = torch.topk(logit.squeeze(0), 5, dim=1)
-            answers = []
-            scores = scores.cpu().numpy() * 100
-            for label in labels.cpu().numpy():
-                answers.append(dset.label2ans[label])
-            plt.bar(answers, scores)
-            plt.xlabel('Answers')
-            plt.ylabel('Confidence')
-            plt.title('Predicted confidence of top-5 answers')
-            plt.savefig('SampleQuestionConfidence.png', format='png')
-            print('image id: ', img_id)
-            print('question id: ', ques_id)
+                for i in range(5):
+                    attn_wgts = torch.load('../../snap/attn_wgts_{}.pt'.format(i))
+
+                scores, labels = torch.topk(logit, 5, dim=1)
+                print(scores)
+                print(labels)
+                answers = []
+                scores = scores[0]
+                labels = labels[0]
+                scores = scores.cpu().numpy() * 100
+                for label in labels.cpu().numpy():
+                    answers.append(dset.label2ans[label])
+                plt.bar(answers, scores)
+                plt.xlabel('Answers')
+                plt.ylabel('Confidence')
+                plt.title('Predicted confidence of top-5 answers')
+                plt.savefig('SampleQuestionConfidence.png', format='png')
+                print('image id: ', img_id[0])
+                print('question id: ', ques_id[0])
+            break
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
         """Evaluate all data in data_tuple."""
@@ -226,7 +233,7 @@ if __name__ == "__main__":
             # only validate on the minival set.
             # create bar graph for top answers
             vqa.plot_confidence(
-                get_data_tuple('minival', bs=950,
+                get_data_tuple('minival', bs=1,
                                shuffle=True, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json')
             )
