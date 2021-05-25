@@ -155,34 +155,33 @@ class VQA:
         self.model.eval()
         dset, loader, evaluator = eval_tuple
 
-        for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent, _, img_id = datum_tuple
-            with torch.no_grad():
-                feats, boxes = feats.cuda(), boxes.cuda()
-                logit = self.model(feats, boxes, sent)
-                print(logit)
-                logit = nn.Softmax(dim=1)(logit)
+        datum_tuple = loader[0]
+        ques_id, feats, boxes, sent, _, img_id = datum_tuple
+        with torch.no_grad():
+            feats, boxes = feats.cuda(), boxes.cuda()
+            logit = self.model(feats, boxes, sent)
+            print(logit)
+            logit = nn.Softmax(dim=1)(logit)
 
-                for i in range(5):
-                    attn_wgts = torch.load('attn_wgts_{}.pt'.format(i))
+            for i in range(5):
+                attn_wgts = torch.load('attn_wgts_{}.pt'.format(i))
 
-                scores, labels = torch.topk(logit, 5, dim=1)
-                print(scores)
-                print(labels)
-                answers = []
-                scores = scores[0]
-                labels = labels[0]
-                scores = scores.cpu().numpy() * 100
-                for label in labels.cpu().numpy():
-                    answers.append(dset.label2ans[label])
-                plt.bar(answers, scores)
-                plt.xlabel('Answers')
-                plt.ylabel('Confidence')
-                plt.title('Predicted confidence of top-5 answers')
-                plt.savefig('SampleQuestionConfidence.png', format='png')
-                print('image id: ', img_id[0])
-                print('question id: ', ques_id[0])
-            break
+            scores, labels = torch.topk(logit, 5, dim=1)
+            print(scores)
+            print(labels)
+            answers = []
+            scores = scores[0]
+            labels = labels[0]
+            scores = scores.cpu().numpy() * 100
+            for label in labels.cpu().numpy():
+                answers.append(dset.label2ans[label])
+            plt.bar(answers, scores)
+            plt.xlabel('Answers')
+            plt.ylabel('Confidence')
+            plt.title('Predicted confidence of top-5 answers')
+            plt.savefig('SampleQuestionConfidence.png', format='png')
+            print('image id: ', img_id[0])
+            print('question id: ', ques_id[0])
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
         """Evaluate all data in data_tuple."""
