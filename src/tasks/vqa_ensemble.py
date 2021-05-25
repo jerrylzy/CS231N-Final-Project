@@ -152,13 +152,16 @@ class VQA:
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
                 batch_size = feats.shape[0]
-                final_logit = torch.zeros(batch_size, dset.num_answers)
+                # final_logit = torch.zeros(batch_size, dset.num_answers)
+                labels = torch.zeros(len(self.models), batch_size).cuda()
                 for model in self.models:
                     logit = model(feats, boxes, sent)
-                    logit = nn.Softmax(dim=1)(logit)
-                    final_logit += logit / (torch.argsort(logit, dim=1) + 1).float()
-
-                score, label = final_logit.max(1)
+                    # logit = nn.Softmax(dim=1)(logit)
+                    # final_logit += logit / (torch.argsort(logit, dim=1) + 1).float()
+                    score, label = logit.max(1)
+                    labels[i] = label
+                # score, label = final_logit.max(1)
+                label = torch.mode(labels, dim=0)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid.item()] = ans
