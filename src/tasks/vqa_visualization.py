@@ -154,11 +154,12 @@ class VQA:
         # plot confidence bar graph for one example
         self.model.eval()
         dset, loader, evaluator = eval_tuple
-        datum_tuple = next(iter(loader))[0]
+        datum_tuple = next(iter(loader))
         ques_id, feats, boxes, sent, _, img_id = datum_tuple
+        ques_id, feats, boxes, sent, img_id = ques_id[0], feats[0], boxes[0], sent[0], img_id[0]
         with torch.no_grad():
             feats, boxes = feats.cuda(), boxes.cuda()
-            logit = self.model(feats.unsqueeze(0), boxes.unsqueeze(0), sent.unsqueeze(0))
+            logit = self.model(feats, boxes, sent)
 
             for i in range(5):
                 attn_wgts = torch.load('../../snap/attn_wgts_{}.pt'.format(i))

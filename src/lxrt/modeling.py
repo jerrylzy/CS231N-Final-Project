@@ -371,7 +371,7 @@ class BertCrossattLayer(nn.Module):
     def forward(self, input_tensor, ctx_tensor, ctx_att_mask=None):
         output, attn_wgts = self.att(input_tensor, ctx_tensor, ctx_att_mask)
         attention_output = self.output(output, input_tensor)
-        return attention_output
+        return attention_output, attn_wgts
 
 
 class BertSelfattLayer(nn.Module):
