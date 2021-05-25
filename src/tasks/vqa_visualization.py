@@ -15,6 +15,8 @@ from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.vqa_model import VQAModel
 from tasks.vqa_atten_model import VQAModelAttn
 from tasks.vqa_data import VQADataset, VQATorchDataset, VQAEvaluator
+import plotly.express as px
+import plotly.graph_objects as go
 
 import matplotlib.pyplot as plt
 
@@ -179,11 +181,27 @@ class VQA:
                     scores = scores.cpu().numpy() * 100
                     for label in labels.cpu().numpy():
                         answers.append(dset.label2ans[label])
-                    plt.bar(answers, scores)
-                    plt.xlabel('Answers')
-                    plt.ylabel('Confidence')
-                    plt.title('Predicted confidence of top-5 answers')
-                    plt.savefig('SampleQuestionConfidence.png', format='png')
+
+                    fig = go.Figure(data=[go.Bar(
+                        x=labels, y=scores,
+                        test=scores,
+                        textposition='outside',
+                        orientation='h',
+                        marker=dict(color='lightsalmon')
+                    )])
+                    fig.update_traces(texttemplate='%{text:.3s}')
+                    fig.update_layout(
+                        title='Predicted confidence of top-5 answers',
+                        xaxis_title='Answers',
+                        yaxis_title='Confidence'
+                    )
+                    fig.write_image('SampleQuestionConfidence.png')
+
+                    # plt.bar(answers, scores)
+                    # plt.xlabel('Answers')
+                    # plt.ylabel('Confidence')
+                    # plt.title('Predicted confidence of top-5 answers')
+                    # plt.savefig('SampleQuestionConfidence.png', format='png')
                     print('image id: ', img_id[0])
                     print('question id: ', ques_id[0])
                 break
