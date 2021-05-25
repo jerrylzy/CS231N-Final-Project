@@ -184,7 +184,7 @@ class VQA:
 
                     fig = go.Figure(data=[go.Bar(
                         x=answers, y=scores,
-                        test=scores,
+                        text=scores,
                         textposition='outside',
                         orientation='h',
                         marker=dict(color='lightsalmon')
