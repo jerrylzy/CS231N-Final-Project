@@ -171,6 +171,14 @@ class VQA:
 
                     for j in range(5):
                         attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
+                        attn_wgts = attn_wgts[0][1:10].cpu().numpy()
+                        fig = go.Figure(data=go.Heatmap(
+                            z=attn_wgts,
+                            # x=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                            # y=['Morning', 'Afternoon', 'Evening'],
+                            ))
+                        fig.write_image('atten_vis_{}.png'.format(j))
+                        fig.show()
 
                     scores, labels = torch.topk(logit, 5, dim=1)
                     print(scores)
