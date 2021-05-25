@@ -173,7 +173,8 @@ class VQA:
                     original_boxes = original_boxes[0][1].cpu().numpy()
 
                     im = cv2.imread('COCO_val2014_000000572477.jpg')
-                    image = cv2.rectangle(im, (original_boxes[0],original_boxes[1]), (original_boxes[2],original_boxes[3]), (0,0,255), 2)
+                    image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
+                                          (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
                     cv2.imwrite('bbCOCO_val2014_000000572477.jpg', image)
 
 
