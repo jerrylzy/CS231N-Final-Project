@@ -183,7 +183,7 @@ class VQA:
                         answers.append(dset.label2ans[label])
 
                     fig = go.Figure(data=[go.Bar(
-                        x=labels, y=scores,
+                        x=answers, y=scores,
                         test=scores,
                         textposition='outside',
                         orientation='h',
