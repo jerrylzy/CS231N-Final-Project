@@ -19,6 +19,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from PIL import Image
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
@@ -90,7 +92,7 @@ class VQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, target, _) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, target, _, _) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
@@ -162,8 +164,28 @@ class VQA:
 
         for i, datum_tuple in enumerate(loader):
             if i == sample:
-                ques_id, feats, boxes, sent, _, img_id = datum_tuple
+                ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
                 with torch.no_grad():
+                    print('image id: ', img_id[0])
+                    print('question id: ', ques_id[0])
+
+                    original_boxes = original_boxes[0][1].cpu().numpy()
+
+                    im = Image.open('COCO_val2014_000000572477.jpg')
+                    # Create figure and axes
+                    fig, ax = plt.subplots()
+
+                    # Display the image
+                    ax.imshow(im)
+
+                    # Create a Rectangle patch
+                    rect = patches.Rectangle((original_boxes[0],original_boxes[1]), original_boxes[2]-original_boxes[0], original_boxes[3]-original_boxes[1], linewidth=1, edgecolor='r', facecolor='none')
+
+                    # Add the patch to the Axes
+                    ax.add_patch(rect)
+
+                    plt.savefig('bbCOCO_val2014_000000572477.jpg')
+
                     feats, boxes = feats.cuda(), boxes.cuda()
                     logit = self.model(feats, boxes, sent)
                     print(logit)
@@ -210,8 +232,7 @@ class VQA:
                     # plt.ylabel('Confidence')
                     # plt.title('Predicted confidence of top-5 answers')
                     # plt.savefig('SampleQuestionConfidence.png', format='png')
-                    print('image id: ', img_id[0])
-                    print('question id: ', ques_id[0])
+
                 break
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
