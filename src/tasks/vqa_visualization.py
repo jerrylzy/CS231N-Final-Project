@@ -167,7 +167,7 @@ class VQA:
                 ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
                 with torch.no_grad():
                     print('image id: ', img_id[0])
-                    print('question id: ', ques_id[0][0])
+                    print('question id: ', ques_id[0].item())
                     pic = img_id[0]
                     question = sent[0].replace("?", "").split()
 
@@ -199,7 +199,7 @@ class VQA:
                                 yaxis_title='Sentence',
                                 xaxis_title='Objects'
                             )
-                            fig.write_image('atten_vis_{}_{}.png'.format(j, ques_id[0][0]))
+                            fig.write_image('atten_vis_{}_{}.png'.format(j, ques_id[0].item()))
                             fig.show()
 
                     scores, labels = torch.topk(logit, 5, dim=1)
