@@ -170,12 +170,12 @@ class VQA:
                     print('image id: ', img_id[0])
                     print('question id: ', ques_id[0])
 
+                    # draw bounding box
                     original_boxes = original_boxes[0][1].cpu().numpy()
-
-                    im = cv2.imread('COCO_val2014_000000572477.jpg')
+                    im = cv2.imread('{}.jpg'.format(img_id[0]))
                     image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
                                           (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
-                    cv2.imwrite('bbCOCO_val2014_000000572477.jpg', image)
+                    cv2.imwrite('bb{}.jpg'.format(img_id[0]), image)
 
 
                     feats, boxes = feats.cuda(), boxes.cuda()
@@ -183,6 +183,7 @@ class VQA:
                     print(logit)
                     logit = nn.Softmax(dim=1)(logit)
 
+                    # plot attention map
                     for j in range(5):
                         attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
                         attn_wgts = attn_wgts[0][1:10].cpu().numpy()
@@ -204,6 +205,7 @@ class VQA:
                     for label in labels.cpu().numpy():
                         answers.append(dset.label2ans[label])
 
+                    # plot confidence level
                     fig = go.Figure(data=[go.Bar(
                         x=scores, y=answers,
                         text=scores,
@@ -218,12 +220,6 @@ class VQA:
                         xaxis_title='Confidence'
                     )
                     fig.write_image('SampleQuestionConfidence.png')
-
-                    # plt.bar(answers, scores)
-                    # plt.xlabel('Answers')
-                    # plt.ylabel('Confidence')
-                    # plt.title('Predicted confidence of top-5 answers')
-                    # plt.savefig('SampleQuestionConfidence.png', format='png')
 
                 break
 

@@ -141,6 +141,7 @@ def convert_example_to_features(example: InputExample, max_seq_length, tokenizer
     :return: InputFeatures, containing all inputs and labels of one sample as IDs (as used for model training)
     """
     tokens = tokenizer.tokenize(example.sent.strip())
+    print("tokens", tokens)
 
     # Account for [CLS] and [SEP] with "- 2"
     if len(tokens) > max_seq_length - 2:
@@ -151,6 +152,7 @@ def convert_example_to_features(example: InputExample, max_seq_length, tokenizer
 
     # concatenate lm labels and account for CLS, SEP, SEP
     masked_tokens = ['[CLS]'] + masked_tokens + ['[SEP]']
+    print("masked_tokens", masked_tokens)
     input_ids = tokenizer.convert_tokens_to_ids(masked_tokens)
 
     # Mask & Segment Word
