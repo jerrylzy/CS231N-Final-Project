@@ -13,7 +13,10 @@ from param import args
 from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.vqa_model import VQAModel
 from tasks.vqa_atten_model import VQAModelAttn
+from tasks.vqa_head1 import VQAModel as VQAModelHead1
+from tasks.vqa_head2 import VQAModel as VQAModelHead2
 from tasks.vqa_data import VQADataset, VQATorchDataset, VQAEvaluator
+import random
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
@@ -51,8 +54,10 @@ class VQA:
         self.model1 = VQAModel(self.train_tuple.dataset.num_answers)
         self.model2 = VQAModel(self.train_tuple.dataset.num_answers)
         self.model3 = VQAModel(self.train_tuple.dataset.num_answers)
+        self.model4 = VQAModelHead1(self.train_tuple.dataset.num_answers)
+        self.model5 = VQAModelHead2(self.train_tuple.dataset.num_answers)
         # TODO: ADD MORE MODELS HERE
-        self.models = [self.model1, self.model2, self.model3]
+        self.models = [self.model1, self.model2, self.model3, self.model4, self.model5]
 
         # Load pre-trained weights
         if args.load_lxmert is not None:
@@ -64,6 +69,10 @@ class VQA:
         # GPU options
         # self.model = self.model.cuda()
         self.model1 = self.model1.cuda()
+        self.model2 = self.model2.cuda()
+        self.model3 = self.model3.cuda()
+        self.model4 = self.model4.cuda()
+        self.model5 = self.model5.cuda()
 
         # if args.multiGPU:
         #     self.model.lxrt_encoder.multi_gpu()
@@ -93,7 +102,7 @@ class VQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, target) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, target, _, _) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
@@ -150,13 +159,16 @@ class VQA:
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
                 batch_size = feats.shape[0]
-                final_logit = torch.zeros(batch_size, dset.num_answers)
-                for model in self.models:
+                # final_logit = torch.zeros(batch_size, dset.num_answers)
+                labels = torch.zeros(len(self.models), batch_size).int().cuda()
+                for j, model in enumerate(self.models):
                     logit = model(feats, boxes, sent)
-                    logit = nn.softmax(dim=1)(logit)
-                    final_logit += logit / (torch.argsort(logit, dim=1) + 1).float()
-
-                score, label = final_logit.max(1)
+                    # logit = nn.Softmax(dim=1)(logit)
+                    # final_logit += logit / (torch.argsort(logit, dim=1) + 1).float()
+                    score, label = logit.max(1)
+                    labels[j] = label
+                # score, label = final_logit.max(1)
+                label, _ = torch.mode(labels, dim=0)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid.item()] = ans
@@ -191,11 +203,18 @@ class VQA:
 
     def load_multiple(self):
         # TODO: FILL IN THE PATHS
-        paths = ['snap/vqa/vqa_lxr955/BEST', ]
+        paths = ['snap/vqa/vqa_lxr955/BEST',
+                 'snap/vqa/vqa_bert_mean/BEST',
+                 'snap/vqa/vqa_visn_mean/BEST',
+                 'snap/vqa/vqa_head1/BEST',
+                 'snap/vqa/vqa_head2/BEST',
+                 ]
         for i, path in enumerate(paths):
             print("Load model from %s" % path)
             state_dict = torch.load("%s.pth" % path)
             self.models[i].load_state_dict(state_dict)
+
+        random.shuffle(self.models)
 
 
 if __name__ == "__main__":

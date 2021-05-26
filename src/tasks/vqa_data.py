@@ -133,6 +133,7 @@ class VQATorchDataset(Dataset):
 
         # Normalize the boxes (to 0 ~ 1)
         img_h, img_w = img_info['img_h'], img_info['img_w']
+        original_boxes = boxes
         boxes = boxes.copy()
         boxes[:, (0, 2)] /= img_w
         boxes[:, (1, 3)] /= img_h
@@ -145,7 +146,7 @@ class VQATorchDataset(Dataset):
             target = torch.zeros(self.raw_dataset.num_answers)
             for ans, score in label.items():
                 target[self.raw_dataset.ans2label[ans]] = score
-            return ques_id, feats, boxes, ques, target, img_id
+            return ques_id, feats, boxes, ques, target, img_id, original_boxes
         else:
             return ques_id, feats, boxes, ques
 

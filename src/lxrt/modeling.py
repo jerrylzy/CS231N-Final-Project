@@ -335,6 +335,7 @@ class BertAttention(nn.Module):
 
         # Normalize the attention scores to probabilities.
         attention_probs = nn.Softmax(dim=-1)(attention_scores)
+        attn_wgts = torch.mean(attention_probs, dim=1)
 
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
@@ -344,7 +345,7 @@ class BertAttention(nn.Module):
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
-        return context_layer
+        return context_layer, attn_wgts
 
 
 class BertAttOutput(nn.Module):
@@ -368,9 +369,9 @@ class BertCrossattLayer(nn.Module):
         self.output = BertAttOutput(config)
 
     def forward(self, input_tensor, ctx_tensor, ctx_att_mask=None):
-        output = self.att(input_tensor, ctx_tensor, ctx_att_mask)
+        output, attn_wgts = self.att(input_tensor, ctx_tensor, ctx_att_mask)
         attention_output = self.output(output, input_tensor)
-        return attention_output
+        return attention_output, attn_wgts
 
 
 class BertSelfattLayer(nn.Module):
@@ -381,7 +382,7 @@ class BertSelfattLayer(nn.Module):
 
     def forward(self, input_tensor, attention_mask):
         # Self attention attends to itself, thus keys and querys are the same (input_tensor).
-        self_output = self.self(input_tensor, input_tensor, attention_mask)
+        self_output, attn_wgts = self.self(input_tensor, input_tensor, attention_mask)
         attention_output = self.output(self_output, input_tensor)
         return attention_output
 
@@ -452,10 +453,11 @@ class LXRTXLayer(nn.Module):
         self.visn_inter = BertIntermediate(config)
         self.visn_output = BertOutput(config)
 
-    def cross_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask):
+    def cross_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask, layer_idx):
         # Cross Attention
-        lang_att_output = self.visual_attention(lang_input, visn_input, ctx_att_mask=visn_attention_mask)
-        visn_att_output = self.visual_attention(visn_input, lang_input, ctx_att_mask=lang_attention_mask)
+        lang_att_output, attn_wgts = self.visual_attention(lang_input, visn_input, ctx_att_mask=visn_attention_mask)
+        torch.save(attn_wgts, 'attn_wgts_{}.pt'.format(layer_idx))
+        visn_att_output, _ = self.visual_attention(visn_input, lang_input, ctx_att_mask=lang_attention_mask)
         return lang_att_output, visn_att_output
 
     def self_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask):
@@ -475,12 +477,12 @@ class LXRTXLayer(nn.Module):
         return lang_output, visn_output
 
     def forward(self, lang_feats, lang_attention_mask,
-                      visn_feats, visn_attention_mask):
+                      visn_feats, visn_attention_mask, layer_idx):
         lang_att_output = lang_feats
         visn_att_output = visn_feats
 
         lang_att_output, visn_att_output = self.cross_att(lang_att_output, lang_attention_mask,
-                                                          visn_att_output, visn_attention_mask)
+                                                          visn_att_output, visn_attention_mask, layer_idx)
         lang_att_output, visn_att_output = self.self_att(lang_att_output, lang_attention_mask,
                                                          visn_att_output, visn_attention_mask)
         lang_output, visn_output = self.output_fc(lang_att_output, visn_att_output)
@@ -559,9 +561,9 @@ class LXRTEncoder(nn.Module):
             visn_feats = layer_module(visn_feats, visn_attention_mask)
 
         # Run cross-modality layers
-        for layer_module in self.x_layers:
+        for i, layer_module in enumerate(self.x_layers):
             lang_feats, visn_feats = layer_module(lang_feats, lang_attention_mask,
-                                                  visn_feats, visn_attention_mask)
+                                                  visn_feats, visn_attention_mask, i)
 
         return lang_feats, visn_feats
 

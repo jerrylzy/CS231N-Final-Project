@@ -3,6 +3,7 @@
 
 import os
 import collections
+import random
 
 import torch
 import torch.nn as nn
@@ -14,8 +15,12 @@ from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.vqa_model import VQAModel
 from tasks.vqa_atten_model import VQAModelAttn
 from tasks.vqa_data import VQADataset, VQATorchDataset, VQAEvaluator
+import plotly.express as px
+import plotly.graph_objects as go
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import cv2
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
@@ -87,7 +92,7 @@ class VQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, target, _) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, target, _, _) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
@@ -154,23 +159,73 @@ class VQA:
         # plot confidence bar graph for one example
         self.model.eval()
         dset, loader, evaluator = eval_tuple
-        datum_tuple = next(iter(loader))[0]
-        ques_id, feats, boxes, sent, _, img_id = datum_tuple
-        with torch.no_grad():
-            feats, boxes = feats.cuda(), boxes.cuda()
-            logit = self.model(feats.unsqueeze(0), boxes.unsqueeze(0), sent.unsqueeze(0))
-            scores, labels = torch.topk(logit.squeeze(0), 5, dim=1)
-            answers = []
-            scores = scores.cpu().numpy() * 100
-            for label in labels.cpu().numpy():
-                answers.append(dset.label2ans[label])
-            plt.bar(answers, scores)
-            plt.xlabel('Answers')
-            plt.ylabel('Confidence')
-            plt.title('Predicted confidence of top-5 answers')
-            plt.savefig('SampleQuestionConfidence.png', format='png')
-            print('image id: ', img_id)
-            print('question id: ', ques_id)
+
+        # sample = random.randint(0, len(loader) - 1)
+        sample = 250
+
+        for i, datum_tuple in enumerate(loader):
+            if i == sample:
+                ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
+                with torch.no_grad():
+                    print('image id: ', img_id[0])
+                    print('question id: ', ques_id[0])
+
+                    original_boxes = original_boxes[0][1].cpu().numpy()
+
+                    im = cv2.imread('COCO_val2014_000000572477.jpg')
+                    image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
+                                          (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
+                    cv2.imwrite('bbCOCO_val2014_000000572477.jpg', image)
+
+
+                    feats, boxes = feats.cuda(), boxes.cuda()
+                    logit = self.model(feats, boxes, sent)
+                    print(logit)
+                    logit = nn.Softmax(dim=1)(logit)
+
+                    for j in range(5):
+                        attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
+                        attn_wgts = attn_wgts[0][1:10].cpu().numpy()
+                        fig = go.Figure(data=go.Heatmap(
+                            z=attn_wgts,
+                            # x=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                            # y=['Morning', 'Afternoon', 'Evening'],
+                            ))
+                        fig.write_image('atten_vis_{}.png'.format(j))
+                        fig.show()
+
+                    scores, labels = torch.topk(logit, 5, dim=1)
+                    print(scores)
+                    print(labels)
+                    answers = []
+                    scores = scores[0]
+                    labels = labels[0]
+                    scores = scores.cpu().numpy() * 100
+                    for label in labels.cpu().numpy():
+                        answers.append(dset.label2ans[label])
+
+                    fig = go.Figure(data=[go.Bar(
+                        x=scores, y=answers,
+                        text=scores,
+                        textposition='auto',
+                        orientation='h',
+                        marker=dict(color='lightsalmon')
+                    )])
+                    fig.update_traces(texttemplate='%{text:.3s}')
+                    fig.update_layout(
+                        title='Predicted confidence of top-5 answers',
+                        yaxis_title='Answers',
+                        xaxis_title='Confidence'
+                    )
+                    fig.write_image('SampleQuestionConfidence.png')
+
+                    # plt.bar(answers, scores)
+                    # plt.xlabel('Answers')
+                    # plt.ylabel('Confidence')
+                    # plt.title('Predicted confidence of top-5 answers')
+                    # plt.savefig('SampleQuestionConfidence.png', format='png')
+
+                break
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
         """Evaluate all data in data_tuple."""
@@ -221,7 +276,7 @@ if __name__ == "__main__":
             # only validate on the minival set.
             # create bar graph for top answers
             vqa.plot_confidence(
-                get_data_tuple('minival', bs=950,
+                get_data_tuple('minival', bs=1,
                                shuffle=True, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json')
             )
