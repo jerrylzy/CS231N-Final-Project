@@ -161,8 +161,7 @@ class VQA:
         dset, loader, evaluator = eval_tuple
 
         # sample = random.randint(0, len(loader) - 1)
-        sample = 250
-
+        sample = 2800
         for i, datum_tuple in enumerate(loader):
             if i == sample:
                 ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
@@ -171,11 +170,11 @@ class VQA:
                     print('question id: ', ques_id[0])
 
                     # draw bounding box
-                    original_boxes = original_boxes[0][1].cpu().numpy()
-                    im = cv2.imread('{}.jpg'.format(img_id[0]))
-                    image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
-                                          (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
-                    cv2.imwrite('bb{}.jpg'.format(img_id[0]), image)
+                    # original_boxes = original_boxes[0][1].cpu().numpy()
+                    # im = cv2.imread('{}.jpg'.format(img_id[0]))
+                    #image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
+                   #                       (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
+                    #cv2.imwrite('bb{}.jpg'.format(img_id[0]), image)
 
 
                     feats, boxes = feats.cuda(), boxes.cuda()
@@ -196,8 +195,6 @@ class VQA:
                         fig.show()
 
                     scores, labels = torch.topk(logit, 5, dim=1)
-                    print(scores)
-                    print(labels)
                     answers = []
                     scores = scores[0]
                     labels = labels[0]
