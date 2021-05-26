@@ -162,7 +162,7 @@ class VQA:
         dset, loader, evaluator = eval_tuple
 
         # sample = random.randint(0, len(loader) - 1)
-        sample = 450
+        sample = 960
         for i, datum_tuple in enumerate(loader):
             if i == sample:
                 ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
@@ -174,16 +174,14 @@ class VQA:
 
                     ## draw bounding box
                     if plot_bb == True:
-                        image = cv2.imread(pic)
-                        target_ob = [2, 3, 4]
+                        image = cv2.imread(pic+'.jpg')
+                        target_ob = [31, 25, 2]
                         color = [(0,0,255), (0,165,255), (0,255,255)]
                         for o in range(len(target_ob)):
-                            print(original_boxes.shape)
-                            print(box.shape)
                             box = original_boxes[0][target_ob[o]].cpu().numpy()
                             image = cv2.rectangle(image, (int(box[0]), int(box[1])),
                                                      (int(box[2]), int(box[3])), color[o], 2)
-                        cv2.imwrite(('bb'+pic), image)
+                        cv2.imwrite('bb'+pic, image)
 
                     feats, boxes = feats.cuda(), boxes.cuda()
                     logit = self.model(feats, boxes, sent)
@@ -226,7 +224,7 @@ class VQA:
                         )])
                         fig.update_traces(texttemplate='%{x:.2f}')
                         fig.update_layout(
-                            title='Predicted confidence of top-5 answers_{}'.format(sent[0]),
+                            title='Predicted confidence of top-5 answers <br> {}'.format(sent[0]),
                             yaxis_title='Answers',
                             xaxis_title='Confidence'
                         )
@@ -285,9 +283,9 @@ if __name__ == "__main__":
                 get_data_tuple('minival', bs=1,
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json'),
-                plot_bb=True,
-                plot_attention=False,
-                plot_confidence=False
+                plot_bb=False,
+                plot_attention=True,
+                plot_confidence=True
             )
         else:
             assert False, "No such test option for %s" % args.test
