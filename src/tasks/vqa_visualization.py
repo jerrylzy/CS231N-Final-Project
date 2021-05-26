@@ -54,6 +54,7 @@ class VQA:
 
         # Model
         self.model = VQAModel(self.train_tuple.dataset.num_answers)
+        # self.model = VQAModelAttn(self.train_tuple.dataset.num_answers)
 
         # Load pre-trained weights
         if args.load_lxmert is not None:
@@ -161,7 +162,7 @@ class VQA:
         dset, loader, evaluator = eval_tuple
 
         # sample = random.randint(0, len(loader) - 1)
-        sample = 2800
+        sample = 450
         for i, datum_tuple in enumerate(loader):
             if i == sample:
                 ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
@@ -173,12 +174,14 @@ class VQA:
 
                     ## draw bounding box
                     if plot_bb == True:
-                        original_boxes = original_boxes[0][1].cpu().numpy()
-                        im = cv2.imread(pic)
-                        image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
-                                                 (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
+                        image = cv2.imread(pic)
+                        target_ob = [2, 3, 4]
+                        color = [(0,0,255), (0,165,255), (0,255,255)]
+                        for o in range(len(target_ob)):
+                            original_boxes = original_boxes[0][target_ob[o]].cpu().numpy()
+                            image = cv2.rectangle(image, (int(original_boxes[0]), int(original_boxes[1])),
+                                                     (int(original_boxes[2]), int(original_boxes[3])), color[o], 2)
                         cv2.imwrite(('bb'+pic), image)
-
 
                     feats, boxes = feats.cuda(), boxes.cuda()
                     logit = self.model(feats, boxes, sent)
