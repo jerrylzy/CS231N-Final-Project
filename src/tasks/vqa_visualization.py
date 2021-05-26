@@ -162,7 +162,7 @@ class VQA:
         dset, loader, evaluator = eval_tuple
 
         # sample = random.randint(0, len(loader) - 1)
-        sample = 960
+        sample = 450
         for i, datum_tuple in enumerate(loader):
             if i == sample:
                 ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
@@ -175,7 +175,7 @@ class VQA:
                     ## draw bounding box
                     if plot_bb == True:
                         image = cv2.imread(pic+'.jpg')
-                        target_ob = [31, 25, 2]
+                        target_ob = [25, 21, 10]
                         color = [(0,0,255), (0,165,255), (0,255,255)]
                         for o in range(len(target_ob)):
                             box = original_boxes[0][target_ob[o]].cpu().numpy()
@@ -283,9 +283,9 @@ if __name__ == "__main__":
                 get_data_tuple('minival', bs=1,
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json'),
-                plot_bb=False,
-                plot_attention=True,
-                plot_confidence=True
+                plot_bb=True,
+                plot_attention=False,
+                plot_confidence=False
             )
         else:
             assert False, "No such test option for %s" % args.test
