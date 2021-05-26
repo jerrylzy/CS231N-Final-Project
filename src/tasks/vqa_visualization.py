@@ -181,7 +181,7 @@ class VQA:
                             box = original_boxes[0][target_ob[o]].cpu().numpy()
                             image = cv2.rectangle(image, (int(box[0]), int(box[1])),
                                                      (int(box[2]), int(box[3])), color[o], 2)
-                        cv2.imwrite('bb'+pic, image)
+                        cv2.imwrite('bbImage.png', image)
 
                     feats, boxes = feats.cuda(), boxes.cuda()
                     logit = self.model(feats, boxes, sent)
