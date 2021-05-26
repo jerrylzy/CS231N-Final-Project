@@ -182,6 +182,7 @@ class VQA:
 
                     feats, boxes = feats.cuda(), boxes.cuda()
                     logit = self.model(feats, boxes, sent)
+                    print(sent)
                     print(logit)
                     logit = nn.Softmax(dim=1)(logit)
 
@@ -219,7 +220,7 @@ class VQA:
                             orientation='h',
                             marker=dict(color='lightsalmon')
                         )])
-                        fig.update_traces(texttemplate='%{text:.3s}')
+                        fig.update_traces(texttemplate='%{x:.2f}')
                         fig.update_layout(
                             title='Predicted confidence of top-5 answers',
                             yaxis_title='Answers',
