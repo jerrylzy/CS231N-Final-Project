@@ -155,7 +155,7 @@ class VQA:
             evaluator.dump_result(quesid2ans, dump)
         return quesid2ans
 
-    def plot_confidence(self, eval_tuple: DataTuple, dump=None):
+    def plot_analysis(self, eval_tuple: DataTuple, dump=None, plot_bb=False, plot_attention=False, plot_confidence=False):
         # plot confidence bar graph for one example
         self.model.eval()
         dset, loader, evaluator = eval_tuple
@@ -168,13 +168,16 @@ class VQA:
                 with torch.no_grad():
                     print('image id: ', img_id[0])
                     print('question id: ', ques_id[0])
+                    question = ['What', 'are', 'the', 'elephants', 'doing']
+                    pic = 'COCO_val2014_000000394458.jpg'
 
-                    # draw bounding box
-                    # original_boxes = original_boxes[0][1].cpu().numpy()
-                    # im = cv2.imread('{}.jpg'.format(img_id[0]))
-                    #image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
-                   #                       (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
-                    #cv2.imwrite('bb{}.jpg'.format(img_id[0]), image)
+                    ## draw bounding box
+                    if plot_bb == True:
+                        original_boxes = original_boxes[0][1].cpu().numpy()
+                        im = cv2.imread(pic)
+                        image = cv2.rectangle(im, (int(original_boxes[0]), int(original_boxes[1])),
+                                                 (int(original_boxes[2]), int(original_boxes[3])), (0,0,255), 2)
+                        cv2.imwrite(('bb'+pic), image)
 
 
                     feats, boxes = feats.cuda(), boxes.cuda()
@@ -183,16 +186,21 @@ class VQA:
                     logit = nn.Softmax(dim=1)(logit)
 
                     # plot attention map
-                    for j in range(5):
-                        attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
-                        attn_wgts = attn_wgts[0][1:10].cpu().numpy()
-                        fig = go.Figure(data=go.Heatmap(
-                            z=attn_wgts,
-                            # x=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-                            # y=['Morning', 'Afternoon', 'Evening'],
-                            ))
-                        fig.write_image('atten_vis_{}.png'.format(j))
-                        fig.show()
+                    if plot_attention == True:
+                        for j in range(5):
+                            attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
+                            attn_wgts = attn_wgts[0][1:1+len(question)].cpu().numpy()
+                            fig = go.Figure(data=go.Heatmap(
+                                z=attn_wgts,
+                                y=question
+                                ))
+                            fig.update_layout(
+                                title='Attention map of layer {}'.format(j),
+                                yaxis_title='Sentence',
+                                xaxis_title='Objects'
+                            )
+                            fig.write_image('atten_vis_{}_{}.png'.format(j, pic))
+                            fig.show()
 
                     scores, labels = torch.topk(logit, 5, dim=1)
                     answers = []
@@ -203,21 +211,22 @@ class VQA:
                         answers.append(dset.label2ans[label])
 
                     # plot confidence level
-                    fig = go.Figure(data=[go.Bar(
-                        x=scores, y=answers,
-                        text=scores,
-                        textposition='auto',
-                        orientation='h',
-                        marker=dict(color='lightsalmon')
-                    )])
-                    fig.update_traces(texttemplate='%{text:.3s}')
-                    fig.update_layout(
-                        title='Predicted confidence of top-5 answers',
-                        yaxis_title='Answers',
-                        xaxis_title='Confidence'
-                    )
-                    fig.write_image('SampleQuestionConfidence.png')
-
+                    if plot_confidence == True:
+                        fig = go.Figure(data=[go.Bar(
+                            x=scores, y=answers,
+                            text=scores,
+                            textposition='auto',
+                            orientation='h',
+                            marker=dict(color='lightsalmon')
+                        )])
+                        fig.update_traces(texttemplate='%{text:.3s}')
+                        fig.update_layout(
+                            title='Predicted confidence of top-5 answers',
+                            yaxis_title='Answers',
+                            xaxis_title='Confidence',
+                            xaxis={autorange: 'reversed'}
+                        )
+                        fig.write_image('SampleQuestionConfidence_{}.png'.format(pic))
                 break
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
@@ -268,10 +277,13 @@ if __name__ == "__main__":
             # Since part of valididation data are used in pre-training/fine-tuning,
             # only validate on the minival set.
             # create bar graph for top answers
-            vqa.plot_confidence(
+            vqa.plot_analysis(
                 get_data_tuple('minival', bs=1,
                                shuffle=True, drop_last=False),
-                dump=os.path.join(args.output, 'minival_predict.json')
+                dump=os.path.join(args.output, 'minival_predict.json'),
+                plot_bb=False,
+                plot_attention=True,
+                plot_confidence=True
             )
         else:
             assert False, "No such test option for %s" % args.test
