@@ -225,7 +225,7 @@ class VQA:
                             yaxis_title='Answers',
                             xaxis_title='Confidence'
                         )
-                        fig.write_image('SampleQuestionConfidence_{}.png'.format(ques_id[0][0]))
+                        fig.write_image('SampleQuestionConfidence_{}.png'.format(ques_id[0].item()))
                 break
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
