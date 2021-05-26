@@ -167,9 +167,9 @@ class VQA:
                 ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
                 with torch.no_grad():
                     print('image id: ', img_id[0])
-                    print('question id: ', ques_id[0])
-                    question = ['What', 'are', 'the', 'elephants', 'doing']
-                    pic = 'COCO_val2014_000000394458.jpg'
+                    print('question id: ', ques_id[0][0])
+                    pic = img_id[0]
+                    question = sent[0].replace("?", "").split()
 
                     ## draw bounding box
                     if plot_bb == True:
@@ -182,7 +182,6 @@ class VQA:
 
                     feats, boxes = feats.cuda(), boxes.cuda()
                     logit = self.model(feats, boxes, sent)
-                    print(sent)
                     print(logit)
                     logit = nn.Softmax(dim=1)(logit)
 
@@ -190,17 +189,17 @@ class VQA:
                     if plot_attention == True:
                         for j in range(5):
                             attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
-                            attn_wgts = attn_wgts[0][1:1+len(question)].cpu().numpy()
+                            attn_wgts = attn_wgts[0][1:1+len(question)].flip([0]).cpu().numpy()
                             fig = go.Figure(data=go.Heatmap(
                                 z=attn_wgts,
-                                y=question
+                                y=question[::-1]
                                 ))
                             fig.update_layout(
                                 title='Attention map of layer {}'.format(j),
                                 yaxis_title='Sentence',
                                 xaxis_title='Objects'
                             )
-                            fig.write_image('atten_vis_{}_{}.png'.format(j, pic))
+                            fig.write_image('atten_vis_{}_{}.png'.format(j, ques_id[0][0]))
                             fig.show()
 
                     scores, labels = torch.topk(logit, 5, dim=1)
@@ -222,11 +221,11 @@ class VQA:
                         )])
                         fig.update_traces(texttemplate='%{x:.2f}')
                         fig.update_layout(
-                            title='Predicted confidence of top-5 answers',
+                            title='Predicted confidence of top-5 answers_{}'.format(sent[0]),
                             yaxis_title='Answers',
                             xaxis_title='Confidence'
                         )
-                        fig.write_image('SampleQuestionConfidence_{}.png'.format(pic))
+                        fig.write_image('SampleQuestionConfidence_{}.png'.format(ques_id[0][0]))
                 break
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
