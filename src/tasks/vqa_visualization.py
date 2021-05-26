@@ -179,9 +179,10 @@ class VQA:
                         color = [(0,0,255), (0,165,255), (0,255,255)]
                         for o in range(len(target_ob)):
                             print(original_boxes.shape)
-                            original_boxes = original_boxes[0][1].cpu().numpy()
-                            image = cv2.rectangle(image, (int(original_boxes[0]), int(original_boxes[1])),
-                                                     (int(original_boxes[2]), int(original_boxes[3])), color[o], 2)
+                            print(box.shape)
+                            box = original_boxes[0][target_ob[o]].cpu().numpy()
+                            image = cv2.rectangle(image, (int(box[0]), int(box[1])),
+                                                     (int(box[2]), int(box[3])), color[o], 2)
                         cv2.imwrite(('bb'+pic), image)
 
                     feats, boxes = feats.cuda(), boxes.cuda()
