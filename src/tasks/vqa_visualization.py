@@ -223,8 +223,7 @@ class VQA:
                         fig.update_layout(
                             title='Predicted confidence of top-5 answers',
                             yaxis_title='Answers',
-                            xaxis_title='Confidence',
-                            xaxis={autorange: 'reversed'}
+                            xaxis_title='Confidence'
                         )
                         fig.write_image('SampleQuestionConfidence_{}.png'.format(pic))
                 break
