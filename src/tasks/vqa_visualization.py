@@ -278,7 +278,7 @@ if __name__ == "__main__":
             # create bar graph for top answers
             vqa.plot_analysis(
                 get_data_tuple('minival', bs=1,
-                               shuffle=True, drop_last=False),
+                               shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json'),
                 plot_bb=False,
                 plot_attention=True,
