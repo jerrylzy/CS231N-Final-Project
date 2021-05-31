@@ -92,8 +92,8 @@ class VQAGQADataset:
         }
 
         # Answers (the same answer - label mapping between VQA and GQA)
-        ANS2LABEL_PATH = 'data/vqa/trainval_ans2label_merged.json' if USE_MERGED_DATASET else 'data/vqa/trainval_ans2label.json'
-        LABEL2ANS_PATH = 'data/vqa/trainval_label2ans_merged.json' if USE_MERGED_DATASET else 'data/vqa/trainval_label2ans.json'
+        ANS2LABEL_PATH = 'data/vqa/trainval_ans2label_merged.json'
+        LABEL2ANS_PATH = 'data/vqa/trainval_label2ans_merged.json'
 
         self.ans2label = json.load(open(ANS2LABEL_PATH))
         self.label2ans = json.load(open(LABEL2ANS_PATH))
