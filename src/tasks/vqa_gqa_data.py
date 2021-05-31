@@ -64,10 +64,10 @@ class VQAGQADataset:
             self.data.extend(json.load(open("data/vqa/%s.json" % split)))
         print("Load %d VQA data from split(s) %s." % (len(self.data), self.vqa_name))
 
-        # Convert list to dict (for evaluation)
-        self.vqa_id2datum = {
-            datum['question_id']: datum for datum in self.data
-        }
+        # # Convert list to dict (for evaluation)
+        # self.vqa_id2datum = {
+        #     datum['question_id']: datum for datum in self.data
+        # }
 
         self.gqa_name = gqa_splits
         self.gqa_splits = gqa_splits.split(',')
@@ -78,13 +78,18 @@ class VQAGQADataset:
             gqa_data.extend(json.load(open("data/gqa/%s.json" % split)))
         print("Load %d GQA data from split(s) %s." % (len(gqa_data), self.gqa_name))
 
-        # Convert list to dict (for evaluation)
-        self.gqa_id2datum = {
-            datum['question_id']: datum for datum in gqa_data
-        }
+        # # Convert list to dict (for evaluation)
+        # self.gqa_id2datum = {
+        #     datum['question_id']: datum for datum in gqa_data
+        # }
 
         # Merge training dataset
         self.data.extend(gqa_data)
+
+        # Convert list to dict (for evaluation)
+        self.id2datum = {
+            datum['question_id']: datum for datum in self.data
+        }
 
         # Answers (the same answer - label mapping between VQA and GQA)
         ANS2LABEL_PATH = 'data/vqa/trainval_ans2label_merged.json' if USE_MERGED_DATASET else 'data/vqa/trainval_ans2label.json'
@@ -212,20 +217,20 @@ class VQAGQATorchDataset(Dataset):
             return ques_id, feats, boxes, ques
 
 
-class VQAEvaluator:
+class VQAGQAEvaluator:
     def __init__(self, dataset: VQAGQADataset):
         self.dataset = dataset
 
     def evaluate(self, quesid2ans: dict):
         score = 0.
         for quesid, ans in quesid2ans.items():
-            datum = self.dataset.vqa_id2datum[quesid]
+            datum = self.dataset.id2datum[quesid]
             label = datum['label']
             if ans in label:
                 score += label[ans]
         return score / len(quesid2ans)
 
-    def dump_result(self, quesid2ans: dict, path):
+    def dump_result(self, quesid2ans: dict, path: str, dataset: str):
         """
         Dump results to a json file, which could be submitted to the VQA online evaluation.
         VQA json file submission requirement:
@@ -234,52 +239,24 @@ class VQAEvaluator:
                 "question_id": int,
                 "answer": str
             }
-
+        
         :param quesid2ans: dict of quesid --> ans
         :param path: The desired path of saved file.
+        :param dataset: The desired dataset to use
         """
+        is_vqa = dataset == 'vqa'
         with open(path, 'w') as f:
             result = []
             for ques_id, ans in quesid2ans.items():
-                result.append({
-                    'question_id': ques_id,
-                    'answer': ans
-                })
-            json.dump(result, f, indent=4, sort_keys=True)
-
-
-class GQAEvaluator:
-    def __init__(self, dataset: VQAGQADataset):
-        self.dataset = dataset
-
-    def evaluate(self, quesid2ans: dict):
-        score = 0.
-        for quesid, ans in quesid2ans.items():
-            datum = self.dataset.gqa_id2datum[quesid]
-            label = datum['label']
-            if ans in label:
-                score += label[ans]
-        return score / len(quesid2ans)
-
-    def dump_result(self, quesid2ans: dict, path):
-        """
-        Dump the result to a GQA-challenge submittable json file.
-        GQA json file submission requirement:
-            results = [result]
-            result = {
-                "questionId": str,      # Note: it's a actually an int number but the server requires an str.
-                "prediction": str
-            }
-
-        :param quesid2ans: A dict mapping question id to its predicted answer.
-        :param path: The file path to save the json file.
-        :return:
-        """
-        with open(path, 'w') as f:
-            result = []
-            for ques_id, ans in quesid2ans.items():
-                result.append({
+                if is_vqa:
+                    result.append({
+                        'question_id': ques_id,
+                        'answer': ans
+                    })
+                else: # gqa
+                  result.append({
                     'questionId': ques_id,
                     'prediction': ans
                 })
             json.dump(result, f, indent=4, sort_keys=True)
+
