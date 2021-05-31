@@ -195,7 +195,7 @@ class VQAGQATorchDataset(Dataset):
         datum = self.data[item]
 
         img_id = datum['img_id']
-        ques_id = datum['question_id']
+        ques_id = int(datum['question_id'])
         ques = datum['sent']
 
         # Get image info
