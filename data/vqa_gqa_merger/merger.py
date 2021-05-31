@@ -21,10 +21,10 @@ def main():
     merged_labels = list(vqa_labels_set.union(gqa_labels_set))
 
     with open(VQA_LABEL2ANS_PATH, 'w') as f:
-        json.dump(merged_labels, f)
+        json.dump(merged_labels, f, indent=4, sort_keys=True)
 
     with open(GQA_LABEL2ANS_PATH, 'w') as f:
-        json.dump(merged_labels, f)
+        json.dump(merged_labels, f, indent=4, sort_keys=True)
 
     as2label_map_merged = dict()
 
@@ -34,10 +34,10 @@ def main():
         counter += 1
 
     with open(VQA_ANS2LABEL_PATH, 'w') as f:
-        json.dump(as2label_map_merged, f)
+        json.dump(as2label_map_merged, f, indent=4, sort_keys=True)
 
     with open(GQA_ANS2LABEL_PATH, 'w') as f:
-        json.dump(as2label_map_merged, f)
+        json.dump(as2label_map_merged, f, indent=4, sort_keys=True)
     
 
 
