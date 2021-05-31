@@ -175,7 +175,7 @@ class VQA:
                     ## draw bounding box
                     if plot_bb == True:
                         image = cv2.imread(pic+'.jpg')
-                        target_ob = [25, 21, 10]
+                        target_ob = [25, 19, 21]
                         color = [(0,0,255), (0,165,255), (0,255,255)]
                         for o in range(len(target_ob)):
                             box = original_boxes[0][target_ob[o]].cpu().numpy()
