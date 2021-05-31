@@ -89,6 +89,9 @@ class VQAGQADataset:
 
         # Merge training dataset
         self.data.extend(gqa_data)
+        
+        for datum in self.data:
+            datum['question_id'] = str('question_id')
 
         # Convert list to dict (for evaluation)
         self.id2datum = {
