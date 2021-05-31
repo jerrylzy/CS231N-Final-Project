@@ -56,12 +56,13 @@ class VQAGQADataset:
     """
     def __init__(self, vqa_splits: str, gqa_splits: str):
         assert vqa_splits != '' or gqa_splits != ''
+        self.vqa_name = vqa_splits
+        self.gqa_name = gqa_splits
 
         self.data = []
         gqa_data = []
         if vqa_splits != '':
-            self.vqa_name = vqa_splits
-            self.vqa_splits = vqa_splits.split(',')
+            self.vqa_splits = vqa_splits.split(',') if vqa_splits is not None else None
 
             # Loading VQA datasets
             for split in self.vqa_splits:
@@ -74,8 +75,7 @@ class VQAGQADataset:
         # }
 
         if gqa_splits != '':
-            self.gqa_name = gqa_splits
-            self.gqa_splits = gqa_splits.split(',')
+            self.gqa_splits = gqa_splits.split(',') if gqa_splits is not None else None
 
             # Loading GQA datasets to data
             for split in self.gqa_splits:

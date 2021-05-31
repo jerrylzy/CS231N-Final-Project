@@ -220,9 +220,19 @@ if __name__ == "__main__":
         else:
             assert False, "No such test option for %s" % args.test
     else:
-        print('Splits in Train data:', vqa_gqa.train_tuple.dataset.splits)
+        vqa_splits = vqa_gqa.train_tuple.dataset.vqa_splits
+        gqa_splits = vqa_gqa.train_tuple.dataset.gqa_splits
+        if vqa_splits is not None:
+            print('Splits in VQA Train data:', vqa_splits)
+        if gqa_splits is not None:
+            print('Splits in GQA Train data:', gqa_splits)
         if vqa_gqa.valid_tuple is not None:
-            print('Splits in Valid data:', vqa_gqa.valid_tuple.dataset.splits)
+            vqa_splits = vqa_gqa.valid_tuple.dataset.vqa_splits
+            gqa_splits = vqa_gqa.valid_tuple.dataset.gqa_splits
+            if vqa_splits is not None:
+                print('Splits in VQA Valid data:', vqa_splits)
+            if gqa_splits is not None:
+                print('Splits in GQA Valid data:', gqa_splits)
             print("Valid Oracle: %0.2f" % (vqa_gqa.oracle_score(vqa_gqa.valid_tuple) * 100))
         else:
             print("DO NOT USE VALIDATION")
