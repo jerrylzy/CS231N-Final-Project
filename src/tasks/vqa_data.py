@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 
 from param import args
 from utils import load_obj_tsv
+from .config import USE_MERGED_DATASET
 
 # Load part of the dataset for fast checking.
 # Notice that here is the number of images instead of the number of data,
@@ -61,8 +62,11 @@ class VQADataset:
         }
 
         # Answers
-        self.ans2label = json.load(open("data/vqa/trainval_ans2label.json"))
-        self.label2ans = json.load(open("data/vqa/trainval_label2ans.json"))
+        ANS2LABEL_PATH = 'data/vqa/trainval_ans2label_merged.json' if USE_MERGED_DATASET else 'data/vqa/trainval_ans2label.json'
+        LABEL2ANS_PATH = 'data/vqa/trainval_label2ans_merged.json' if USE_MERGED_DATASET else 'data/vqa/trainval_label2ans.json'
+
+        self.ans2label = json.load(open(ANS2LABEL_PATH))
+        self.label2ans = json.load(open(LABEL2ANS_PATH))
         assert len(self.ans2label) == len(self.label2ans)
 
     @property
