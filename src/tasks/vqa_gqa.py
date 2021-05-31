@@ -112,11 +112,7 @@ class VQAGQA:
                 score, label = logit.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
-                    
-                    if hasattr(qid, 'item'):
-                        quesid2ans[qid.item()] = ans
-                    else:
-                        quesid2ans[qid] = ans
+                    quesid2ans[qid] = ans
 
             log_str = "\nEpoch %d: Train %0.2f\n" % (epoch, evaluator.evaluate(quesid2ans) * 100.)
 
@@ -156,11 +152,7 @@ class VQAGQA:
                 score, label = logit.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
-                    
-                    if hasattr(qid, 'item'):
-                        quesid2ans[qid.item()] = ans
-                    else:
-                        quesid2ans[qid] = ans
+                    quesid2ans[qid] = ans
         if dump is not None:
             evaluator.dump_result(quesid2ans, dump, dataset)
         return quesid2ans
@@ -178,11 +170,7 @@ class VQAGQA:
             _, label = target.max(1)
             for qid, l in zip(ques_id, label.cpu().numpy()):
                 ans = dset.label2ans[l]
-                    
-                if hasattr(qid, 'item'):
-                    quesid2ans[qid.item()] = ans
-                else:
-                    quesid2ans[qid] = ans
+                quesid2ans[qid] = ans
         return evaluator.evaluate(quesid2ans)
 
     def save(self, name):
