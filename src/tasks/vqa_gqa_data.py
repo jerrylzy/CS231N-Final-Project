@@ -156,21 +156,24 @@ class VQAGQATorchDataset(Dataset):
 
         # Loading detection features to img_data
         img_data = []
-        for split in dataset.vqa_splits:
-            # Minival is 5K images in MS COCO, which is used in evaluating VQA/LXMERT-pre-training.
-            # It is saved as the top 5K features in val2014_***.tsv
-            load_topk = 5000 if (split == 'minival' and topk is None) else topk
-            img_data.extend(load_obj_tsv(
-                os.path.join(MSCOCO_IMGFEAT_ROOT, '%s_obj36.tsv' % (SPLIT2NAME[split])),
-                topk=load_topk))
+        if dataset.vqa_splits != None:
+            for split in dataset.vqa_splits:
+                # Minival is 5K images in MS COCO, which is used in evaluating VQA/LXMERT-pre-training.
+                # It is saved as the top 5K features in val2014_***.tsv
+                load_topk = 5000 if (split == 'minival' and topk is None) else topk
+                img_data.extend(load_obj_tsv(
+                    os.path.join(MSCOCO_IMGFEAT_ROOT, '%s_obj36.tsv' % (SPLIT2NAME[split])),
+                    topk=load_topk))
 
         # Since images in train and valid both come from Visual Genome,
         # buffer the image loading to save memory.
-        img_data = []
-        if 'testdev' in dataset.gqa_splits or 'testdev_all' in dataset.gqa_splits:     # Always loading all the data in testdev
-            img_data.extend(gqa_buffer_loader.load_data('testdev', -1))
-        else:
-            img_data.extend(gqa_buffer_loader.load_data('train', topk))
+        if dataset.gqa_splits != None:
+            if topk == None:
+                topk = -1
+            if 'testdev' in dataset.gqa_splits or 'testdev_all' in dataset.gqa_splits:     # Always loading all the data in testdev
+                img_data.extend(gqa_buffer_loader.load_data('testdev', -1))
+            else:
+                img_data.extend(gqa_buffer_loader.load_data('train', topk))
 
         # Convert img list to dict
         self.imgid2img = {}
