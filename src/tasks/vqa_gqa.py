@@ -17,8 +17,8 @@ from tasks.vqa_gqa_data import VQAGQADataset, VQAGQATorchDataset, VQAGQAEvaluato
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
 
-def get_data_tuple(splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
-    dset = VQAGQADataset(splits)
+def get_data_tuple(vqa_splits: str, gqa_splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
+    dset = VQAGQADataset(vqa_splits, gqa_splits)
     tset = VQAGQATorchDataset(dset)
     evaluator = VQAGQAEvaluator(dset)
     data_loader = DataLoader(
@@ -34,11 +34,11 @@ class VQAGQA:
     def __init__(self):
         # Datasets
         self.train_tuple = get_data_tuple(
-            args.train, bs=args.batch_size, shuffle=True, drop_last=True
+            args.vqa_train, args.gqa_train, bs=args.batch_size, shuffle=True, drop_last=True
         )
         if args.valid != "":
             self.valid_tuple = get_data_tuple(
-                args.valid, bs=1024 if args.multiGPU else 512,
+                args.vqa_valid, args.gqa_valid, bs=1024 if args.multiGPU else 512,
                 shuffle=False, drop_last=False
             )
         else:
@@ -187,7 +187,7 @@ if __name__ == "__main__":
         args.fast = args.tiny = False       # Always loading all data in test
         if 'test' in args.test:
             vqa_gqa.predict(
-                get_data_tuple(args.test, bs=950,
+                get_data_tuple(args.test, '', bs=950,
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'test_predict.json',
                 dataset='vqa')
@@ -196,7 +196,7 @@ if __name__ == "__main__":
             # Since part of valididation data are used in pre-training/fine-tuning,
             # only validate on the minival set.
             result = vqa_gqa.evaluate(
-                get_data_tuple('minival', bs=950,
+                get_data_tuple('minival', '', bs=950,
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json',
                 dataset='vqa')
@@ -204,14 +204,14 @@ if __name__ == "__main__":
             print(result)
         elif 'submit' in args.test:
             vqa_gqa.predict(
-                get_data_tuple(args.test, bs=args.batch_size,
+                get_data_tuple('', args.test, bs=args.batch_size,
                           shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'submit_predict.json',
                 dataset='gqa')
             )
         if 'testdev' in args.test:
             result = vqa_gqa.evaluate(
-                get_data_tuple('testdev', bs=args.batch_size,
+                get_data_tuple('', 'testdev', bs=args.batch_size,
                           shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'testdev_predict.json',
                 dataset='gqa')

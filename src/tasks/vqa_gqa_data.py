@@ -55,28 +55,32 @@ class VQAGQADataset:
         }
     """
     def __init__(self, vqa_splits: str, gqa_splits: str):
-        self.vqa_name = vqa_splits
-        self.vqa_splits = vqa_splits.split(',')
+        assert vqa_splits != '' or gqa_splits != ''
 
-        # Loading VQA datasets
         self.data = []
-        for split in self.vqa_splits:
-            self.data.extend(json.load(open("data/vqa/%s.json" % split)))
-        print("Load %d VQA data from split(s) %s." % (len(self.data), self.vqa_name))
+        gqa_data = []
+        if vqa_splits != '':
+            self.vqa_name = vqa_splits
+            self.vqa_splits = vqa_splits.split(',')
+
+            # Loading VQA datasets
+            for split in self.vqa_splits:
+                self.data.extend(json.load(open("data/vqa/%s.json" % split)))
+            print("Load %d VQA data from split(s) %s." % (len(self.data), self.vqa_name))
 
         # # Convert list to dict (for evaluation)
         # self.vqa_id2datum = {
         #     datum['question_id']: datum for datum in self.data
         # }
 
-        self.gqa_name = gqa_splits
-        self.gqa_splits = gqa_splits.split(',')
+        if gqa_splits != '':
+            self.gqa_name = gqa_splits
+            self.gqa_splits = gqa_splits.split(',')
 
-        # Loading GQA datasets to data
-        gqa_data = []
-        for split in self.gqa_splits:
-            gqa_data.extend(json.load(open("data/gqa/%s.json" % split)))
-        print("Load %d GQA data from split(s) %s." % (len(gqa_data), self.gqa_name))
+            # Loading GQA datasets to data
+            for split in self.gqa_splits:
+                gqa_data.extend(json.load(open("data/gqa/%s.json" % split)))
+            print("Load %d GQA data from split(s) %s." % (len(gqa_data), self.gqa_name))
 
         # # Convert list to dict (for evaluation)
         # self.gqa_id2datum = {

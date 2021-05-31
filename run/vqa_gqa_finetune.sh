@@ -10,7 +10,8 @@ cp $0 $output/run.bash
 # See Readme.md for option details.
 CUDA_VISIBLE_DEVICES=$1 PYTHONPATH=$PYTHONPATH:./src \
     python src/tasks/vqa.py \
-    --train train,nominival --valid minival  \
+    --vqa-train train,nominival --vqa-valid minival  \
+    --gqa-train train,valid --gqa-valid testdev  \
     --llayers 9 --xlayers 5 --rlayers 5 \
     --loadLXMERTQA snap/pretrained/model \
     --batchSize 32 --optim bert --lr 5e-5 --epochs 4 \
