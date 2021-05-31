@@ -36,9 +36,19 @@ class VQAGQA:
         self.train_tuple = get_data_tuple(
             args.vqa_train, args.gqa_train, bs=args.batch_size, shuffle=True, drop_last=True
         )
-        if args.valid != "":
+        if args.vqa_valid != '' and args.gqa_valid != '':
             self.valid_tuple = get_data_tuple(
                 args.vqa_valid, args.gqa_valid, bs=1024 if args.multiGPU else 512,
+                shuffle=False, drop_last=False
+            )
+        elif args.vqa_valid != '':
+            self.valid_tuple = get_data_tuple(
+                args.vqa_valid, '', bs=1024,
+                shuffle=False, drop_last=False
+            )
+        elif args.gqa_valid != '':
+            self.valid_tuple = get_data_tuple(
+                '', args.gqa_valid, bs=2048 if args.multiGPU else 512,
                 shuffle=False, drop_last=False
             )
         else:
