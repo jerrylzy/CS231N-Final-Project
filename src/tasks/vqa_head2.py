@@ -22,35 +22,16 @@ class VQAModel(nn.Module):
         )
         hid_dim = self.lxrt_encoder.dim
 
-        # VQA Answer heads
+        #  231 Alternative VQA Answer heads
         self.logit_fc = nn.Sequential(
-           nn.Linear(hid_dim, hid_dim * 2),
-           GeLU(),
-           BertLayerNorm(hid_dim * 2, eps=1e-12),
-           nn.Linear(hid_dim * 2, num_answers)
+             nn.Tanh(),
+             nn.Dropout(0.5),
+             nn.Linear(hid_dim, num_answers),
+             nn.Tanh(),
+             BertLayerNorm(num_answers, eps=1e-12),
+             nn.Dropout(0.5),
+             nn.Linear(num_answers, num_answers)
         )
-        self.logit_fc.apply(self.lxrt_encoder.model.init_bert_weights)
-
-       # self.logit_fc = nn.Sequential(
-        #    nn.Linear(hid_dim, hid_dim),
-         #   nn.LeakyReLU(),
-        #    BertLayerNorm(hid_dim, eps=1e-12),
-        #    nn.Linear(hid_dim, hid_dim * 2),
-        #    nn.ReLU(),
-        #    BertLayerNorm(hid_dim * 2, eps=1e-12),
-        #    nn.Linear(hid_dim * 2, num_answers),
-       # )
-
-        # #  231 Alternative VQA Answer heads
-        # self.logit_fc = nn.Sequential(
-        #      nn.Tanh(),
-        #      nn.Dropout(0.5),
-        #      nn.Linear(hid_dim, num_answers),
-        #      nn.Tanh(),
-        #      BertLayerNorm(num_answers, eps=1e-12),
-        #      nn.Dropout(0.5),
-        #      nn.Linear(num_answers, num_answers)
-        # )
 
         # can also change the loss function to be
         # nn.KLDivLoss, need to convert scores to log probs first

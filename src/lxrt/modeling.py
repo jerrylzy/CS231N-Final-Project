@@ -335,6 +335,7 @@ class BertAttention(nn.Module):
 
         # Normalize the attention scores to probabilities.
         attention_probs = nn.Softmax(dim=-1)(attention_scores)
+        attn_wgts = torch.mean(attention_probs, dim=1)
 
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
@@ -344,7 +345,7 @@ class BertAttention(nn.Module):
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
-        return context_layer
+        return context_layer, attn_wgts
 
 
 class BertAttOutput(nn.Module):
@@ -368,9 +369,9 @@ class BertCrossattLayer(nn.Module):
         self.output = BertAttOutput(config)
 
     def forward(self, input_tensor, ctx_tensor, ctx_att_mask=None):
-        output = self.att(input_tensor, ctx_tensor, ctx_att_mask)
+        output, attn_wgts = self.att(input_tensor, ctx_tensor, ctx_att_mask)
         attention_output = self.output(output, input_tensor)
-        return attention_output
+        return attention_output, attn_wgts
 
 
 class BertSelfattLayer(nn.Module):
@@ -381,7 +382,7 @@ class BertSelfattLayer(nn.Module):
 
     def forward(self, input_tensor, attention_mask):
         # Self attention attends to itself, thus keys and querys are the same (input_tensor).
-        self_output = self.self(input_tensor, input_tensor, attention_mask)
+        self_output, attn_wgts = self.self(input_tensor, input_tensor, attention_mask)
         attention_output = self.output(self_output, input_tensor)
         return attention_output
 
@@ -452,10 +453,11 @@ class LXRTXLayer(nn.Module):
         self.visn_inter = BertIntermediate(config)
         self.visn_output = BertOutput(config)
 
-    def cross_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask):
+    def cross_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask, layer_idx):
         # Cross Attention
-        lang_att_output = self.visual_attention(lang_input, visn_input, ctx_att_mask=visn_attention_mask)
-        visn_att_output = self.visual_attention(visn_input, lang_input, ctx_att_mask=lang_attention_mask)
+        lang_att_output, attn_wgts = self.visual_attention(lang_input, visn_input, ctx_att_mask=visn_attention_mask)
+        torch.save(attn_wgts, 'attn_wgts_{}.pt'.format(layer_idx))
+        visn_att_output, _ = self.visual_attention(visn_input, lang_input, ctx_att_mask=lang_attention_mask)
         return lang_att_output, visn_att_output
 
     def self_att(self, lang_input, lang_attention_mask, visn_input, visn_attention_mask):
@@ -475,12 +477,12 @@ class LXRTXLayer(nn.Module):
         return lang_output, visn_output
 
     def forward(self, lang_feats, lang_attention_mask,
-                      visn_feats, visn_attention_mask):
+                      visn_feats, visn_attention_mask, layer_idx):
         lang_att_output = lang_feats
         visn_att_output = visn_feats
 
         lang_att_output, visn_att_output = self.cross_att(lang_att_output, lang_attention_mask,
-                                                          visn_att_output, visn_attention_mask)
+                                                          visn_att_output, visn_attention_mask, layer_idx)
         lang_att_output, visn_att_output = self.self_att(lang_att_output, lang_attention_mask,
                                                          visn_att_output, visn_attention_mask)
         lang_output, visn_output = self.output_fc(lang_att_output, visn_att_output)
@@ -559,9 +561,9 @@ class LXRTEncoder(nn.Module):
             visn_feats = layer_module(visn_feats, visn_attention_mask)
 
         # Run cross-modality layers
-        for layer_module in self.x_layers:
+        for i, layer_module in enumerate(self.x_layers):
             lang_feats, visn_feats = layer_module(lang_feats, lang_attention_mask,
-                                                  visn_feats, visn_attention_mask)
+                                                  visn_feats, visn_attention_mask, i)
 
         return lang_feats, visn_feats
 
@@ -577,6 +579,33 @@ class BertPooler(nn.Module):
         # to the first token.
         first_token_tensor = hidden_states[:, 0]
         pooled_output = self.dense(first_token_tensor)
+        pooled_output = self.activation(pooled_output)
+        return pooled_output
+
+# 231
+class BertMeanPooler(nn.Module):
+    def __init__(self, config):
+        super(BertMeanPooler, self).__init__()
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.activation = nn.ReLU()
+
+    def forward(self, hidden_states):
+        # We "pool" the model by simply taking the average of the hidden states
+        avg_token_tensor = torch.mean(hidden_states, dim=1)
+        pooled_output = self.dense(avg_token_tensor)
+        pooled_output = self.activation(pooled_output)
+        return pooled_output
+
+class VisionMeanPooler(nn.Module):
+    def __init__(self, config):
+        super(VisionMeanPooler, self).__init__()
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.activation = nn.ReLU()
+
+    def forward(self, hidden_states):
+        # We "pool" the model by simply taking the average of the hidden states
+        avg_token_tensor = torch.mean(hidden_states, dim=1)
+        pooled_output = self.dense(avg_token_tensor)
         pooled_output = self.activation(pooled_output)
         return pooled_output
 
@@ -840,6 +869,9 @@ class LXRTModel(BertPreTrainedModel):
         self.embeddings = BertEmbeddings(config)
         self.encoder = LXRTEncoder(config)
         self.pooler = BertPooler(config)
+        # 231
+        # self.pooler = BertMeanPooler(config)
+        # self.pooler = VisionMeanPooler(config)
         self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None,
@@ -882,6 +914,8 @@ class LXRTModel(BertPreTrainedModel):
             visn_feats=visual_feats,
             visn_attention_mask=extended_visual_attention_mask)
         pooled_output = self.pooler(lang_feats)
+        # 231
+        # pooled_output = self.pooler(visn_feats)
 
         return (lang_feats, visn_feats), pooled_output
 
@@ -977,7 +1011,7 @@ class LXRTPretraining(BertPreTrainedModel):
             answer_loss = loss_fct(
                 answer_score.view(-1, self.num_answers),
                 ans.view(-1)
-            )  
+            )
             # Since this Github version pre-trains with QA loss from the beginning,
             # I exclude "*2" here to match the effect of QA losses.
             # Previous: (loss *0) for 6 epochs, (loss *2) for 6 epochs.   (Used 10 instead of 6 in EMNLP paper)
@@ -1010,7 +1044,9 @@ class LXRTFeatureExtraction(BertPreTrainedModel):
                                             visual_feats=visual_feats,
                                             visual_attention_mask=visual_attention_mask)
         if 'x' == self.mode:
-            return pooled_output
+            # 231
+            # return pooled_output
+            return feat_seq, pooled_output
         elif 'x' in self.mode and ('l' in self.mode or 'r' in self.mode):
             return feat_seq, pooled_output
         elif 'l' in self.mode or 'r' in self.mode:

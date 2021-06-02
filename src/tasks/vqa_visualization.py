@@ -3,6 +3,7 @@
 
 import os
 import collections
+import random
 
 import torch
 import torch.nn as nn
@@ -14,11 +15,17 @@ from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.vqa_model import VQAModel
 from tasks.vqa_atten_model import VQAModelAttn
 from tasks.vqa_data import VQADataset, VQATorchDataset, VQAEvaluator
+import plotly.express as px
+import plotly.graph_objects as go
+
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import cv2
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
 
-def get_data_tuple(splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
+def get_data_tuple(splits: str, bs: int, shuffle=False, drop_last=False) -> DataTuple:
     dset = VQADataset(splits)
     tset = VQATorchDataset(dset)
     evaluator = VQAEvaluator(dset)
@@ -44,9 +51,10 @@ class VQA:
             )
         else:
             self.valid_tuple = None
-        
+
         # Model
         self.model = VQAModel(self.train_tuple.dataset.num_answers)
+        # self.model = VQAModelAttn(self.train_tuple.dataset.num_answers)
 
         # Load pre-trained weights
         if args.load_lxmert is not None:
@@ -54,7 +62,7 @@ class VQA:
         if args.load_lxmert_qa is not None:
             load_lxmert_qa(args.load_lxmert_qa, self.model,
                            label2ans=self.train_tuple.dataset.label2ans)
-        
+
         # GPU options
         self.model = self.model.cuda()
         if args.multiGPU:
@@ -73,7 +81,7 @@ class VQA:
                                   t_total=t_total)
         else:
             self.optim = args.optimizer(self.model.parameters(), args.lr)
-        
+
         # Output Directory
         self.output = args.output
         os.makedirs(self.output, exist_ok=True)
@@ -85,7 +93,7 @@ class VQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, target, _) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, target, _, _) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
@@ -136,7 +144,7 @@ class VQA:
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
         for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent = datum_tuple[:4]   # Avoid seeing ground truth
+            ques_id, feats, boxes, sent = datum_tuple[:4]  # Avoid seeing ground truth
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
                 logit = self.model(feats, boxes, sent)
@@ -148,6 +156,81 @@ class VQA:
             evaluator.dump_result(quesid2ans, dump)
         return quesid2ans
 
+    def plot_analysis(self, eval_tuple: DataTuple, dump=None, plot_bb=False, plot_attention=False, plot_confidence=False):
+        # plot confidence bar graph for one example
+        self.model.eval()
+        dset, loader, evaluator = eval_tuple
+
+        # sample = random.randint(0, len(loader) - 1)
+        sample = 450
+        for i, datum_tuple in enumerate(loader):
+            if i == sample:
+                ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
+                with torch.no_grad():
+                    print('image id: ', img_id[0])
+                    print('question id: ', ques_id[0].item())
+                    pic = img_id[0]
+                    question = sent[0].replace("?", "").split()
+
+                    ## draw bounding box
+                    if plot_bb == True:
+                        image = cv2.imread(pic+'.jpg')
+                        target_ob = [25, 19, 21]
+                        color = [(0,0,255), (0,165,255), (0,255,255)]
+                        for o in range(len(target_ob)):
+                            box = original_boxes[0][target_ob[o]].cpu().numpy()
+                            image = cv2.rectangle(image, (int(box[0]), int(box[1])),
+                                                     (int(box[2]), int(box[3])), color[o], 2)
+                        cv2.imwrite('bbImage.png', image)
+
+                    feats, boxes = feats.cuda(), boxes.cuda()
+                    logit = self.model(feats, boxes, sent)
+                    print(logit)
+                    logit = nn.Softmax(dim=1)(logit)
+
+                    # plot attention map
+                    if plot_attention == True:
+                        for j in range(5):
+                            attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
+                            attn_wgts = attn_wgts[0][1:1+len(question)].flip([0]).cpu().numpy()
+                            fig = go.Figure(data=go.Heatmap(
+                                z=attn_wgts,
+                                y=question[::-1]
+                                ))
+                            fig.update_layout(
+                                title='Attention map of layer {}'.format(j),
+                                yaxis_title='Sentence',
+                                xaxis_title='Objects'
+                            )
+                            fig.write_image('atten_vis_{}_{}.png'.format(j, ques_id[0].item()))
+                            fig.show()
+
+                    scores, labels = torch.topk(logit, 5, dim=1)
+                    answers = []
+                    scores = scores[0]
+                    labels = labels[0]
+                    scores = scores.cpu().numpy() * 100
+                    for label in labels.cpu().numpy():
+                        answers.append(dset.label2ans[label])
+
+                    # plot confidence level
+                    if plot_confidence == True:
+                        fig = go.Figure(data=[go.Bar(
+                            x=scores, y=answers,
+                            text=scores,
+                            textposition='auto',
+                            orientation='h',
+                            marker=dict(color='lightsalmon')
+                        )])
+                        fig.update_traces(texttemplate='%{x:.2f}')
+                        fig.update_layout(
+                            title='Predicted confidence of top-5 answers <br> {}'.format(sent[0]),
+                            yaxis_title='Answers',
+                            xaxis_title='Confidence'
+                        )
+                        fig.write_image('SampleQuestionConfidence_{}.png'.format(ques_id[0].item()))
+                break
+
     def evaluate(self, eval_tuple: DataTuple, dump=None):
         """Evaluate all data in data_tuple."""
         quesid2ans = self.predict(eval_tuple, dump)
@@ -157,7 +240,7 @@ class VQA:
     def oracle_score(data_tuple):
         dset, loader, evaluator = data_tuple
         quesid2ans = {}
-        for i, (ques_id, feats, boxes, sent, target, _) in enumerate(loader):
+        for i, (ques_id, feats, boxes, sent, target) in enumerate(loader):
             _, label = target.max(1)
             for qid, l in zip(ques_id, label.cpu().numpy()):
                 ans = dset.label2ans[l]
@@ -185,22 +268,25 @@ if __name__ == "__main__":
 
     # Test or Train
     if args.test is not None:
-        args.fast = args.tiny = False       # Always loading all data in test
+        args.fast = args.tiny = False  # Always loading all data in test
         if 'test' in args.test:
             vqa.predict(
                 get_data_tuple(args.test, bs=950,
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'test_predict.json')
             )
-        elif 'val' in args.test:    
+        elif 'val' in args.test:
             # Since part of valididation data are used in pre-training/fine-tuning,
             # only validate on the minival set.
-            result = vqa.evaluate(
-                get_data_tuple('minival', bs=950,
+            # create bar graph for top answers
+            vqa.plot_analysis(
+                get_data_tuple('minival', bs=1,
                                shuffle=False, drop_last=False),
-                dump=os.path.join(args.output, 'minival_predict.json')
+                dump=os.path.join(args.output, 'minival_predict.json'),
+                plot_bb=True,
+                plot_attention=False,
+                plot_confidence=False
             )
-            print(result)
         else:
             assert False, "No such test option for %s" % args.test
     else:
