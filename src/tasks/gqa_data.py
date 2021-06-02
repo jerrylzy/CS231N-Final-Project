@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 
 from param import args
 from utils import load_obj_tsv
+from .config import USE_MERGED_DATASET
 
 # Load part of the dataset for fast checking.
 # Notice that here is the number of images instead of the number of data,
@@ -46,8 +47,11 @@ class GQADataset:
         }
 
         # Answers
-        self.ans2label = json.load(open("data/gqa/trainval_ans2label.json"))
-        self.label2ans = json.load(open("data/gqa/trainval_label2ans.json"))
+        ANS2LABEL_PATH = 'data/gqa/trainval_ans2label_merged.json' if USE_MERGED_DATASET else 'data/gqa/trainval_ans2label.json'
+        LABEL2ANS_PATH = 'data/gqa/trainval_label2ans_merged.json' if USE_MERGED_DATASET else 'data/gqa/trainval_label2ans.json'
+
+        self.ans2label = json.load(open(ANS2LABEL_PATH))
+        self.label2ans = json.load(open(LABEL2ANS_PATH))
         assert len(self.ans2label) == len(self.label2ans)
         for ans, label in self.ans2label.items():
             assert self.label2ans[label] == ans

@@ -36,6 +36,10 @@ def parse_args():
     # Data Splits
     parser.add_argument("--train", default='train')
     parser.add_argument("--valid", default='valid')
+    parser.add_argument("--vqa-train")
+    parser.add_argument("--vqa-valid")
+    parser.add_argument("--gqa-train")
+    parser.add_argument("--gqa-valid")
     parser.add_argument("--test", default=None)
 
     # Training Hyper-parameters
