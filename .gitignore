@@ -2,3 +2,5 @@
 *.tsv
 /snap
 __pycache__
+.vscode
+*.png
