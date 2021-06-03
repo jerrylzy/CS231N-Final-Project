@@ -166,8 +166,7 @@ class VQA:
         img_no = 0
         for i, datum_tuple in enumerate(loader):
             ques_id, feats, boxes, sent, _, img_id, original_boxes, ans_type = datum_tuple
-            if ans_type != 'number':
-                print(f'ans_type: {ans_type}')
+            if ans_type[0] != 'number':
                 continue
 
             with torch.no_grad():
