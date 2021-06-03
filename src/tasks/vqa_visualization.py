@@ -290,8 +290,8 @@ if __name__ == "__main__":
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json'),
                 plot_bb=True,
-                plot_attention=False,
-                plot_confidence=False
+                plot_attention=True,
+                plot_confidence=True
             )
         else:
             assert False, "No such test option for %s" % args.test
