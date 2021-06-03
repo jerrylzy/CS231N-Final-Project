@@ -164,6 +164,7 @@ class VQA:
         # sample = random.randint(0, len(loader) - 1)
         sample = 450
         img_no = 0
+        output_folder = 'output/'
         for i, datum_tuple in enumerate(loader):
             ques_id, feats, boxes, sent, _, img_id, original_boxes, ans_type = datum_tuple
             if ans_type[0] != 'number':
@@ -184,7 +185,7 @@ class VQA:
                         box = original_boxes[0][target_ob[o]].cpu().numpy()
                         image = cv2.rectangle(image, (int(box[0]), int(box[1])),
                                                     (int(box[2]), int(box[3])), color[o], 2)
-                    cv2.imwrite(f'bbImage{img_no}.png', image)
+                    cv2.imwrite(f'{output_folder}bbImage{img_no}.png', image)
 
                 feats, boxes = feats.cuda(), boxes.cuda()
                 logit = self.model(feats, boxes, sent)
@@ -194,7 +195,7 @@ class VQA:
                 # plot attention map
                 if plot_attention == True:
                     for j in range(5):
-                        attn_wgts = torch.load(f'attn_wgts_{img_no}_{j}.pt')
+                        attn_wgts = torch.load(f'{output_folder}attn_wgts_{img_no}_{j}.pt')
                         attn_wgts = attn_wgts[0][1:1+len(question)].flip([0]).cpu().numpy()
                         fig = go.Figure(data=go.Heatmap(
                             z=attn_wgts,
@@ -205,7 +206,7 @@ class VQA:
                             yaxis_title='Sentence',
                             xaxis_title='Objects'
                         )
-                        fig.write_image(f'atten_vis_{img_no}_{j}_{ques_id[0].item()}.png')
+                        fig.write_image(f'{output_folder}atten_vis_{img_no}_{j}_{ques_id[0].item()}.png')
                         fig.show()
 
                 scores, labels = torch.topk(logit, 5, dim=1)
@@ -231,7 +232,7 @@ class VQA:
                         yaxis_title='Answers',
                         xaxis_title='Confidence'
                     )
-                    fig.write_image(f'SampleQuestionConfidence_{img_no}_{ques_id[0].item()}.png')
+                    fig.write_image(f'{output_folder}SampleQuestionConfidence_{img_no}_{ques_id[0].item()}.png')
             img_no += 1
             if img_no == 10:
                 break
