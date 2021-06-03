@@ -177,7 +177,7 @@ class VQA:
 
                 ## draw bounding box
                 if plot_bb == True:
-                    image = cv2.imread(pic+'.jpg')
+                    image = cv2.imread(f'data/mscoco/val2014/{pic}.jpg')
                     target_ob = [25, 19, 21]
                     color = [(0,0,255), (0,165,255), (0,255,255)]
                     for o in range(len(target_ob)):
