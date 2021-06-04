@@ -126,6 +126,7 @@ class VQATorchDataset(Dataset):
 
         img_id = datum['img_id']
         ques_id = datum['question_id']
+        ans_type = datum['answer_type']
         ques = datum['sent']
 
         # Get image info
@@ -150,7 +151,7 @@ class VQATorchDataset(Dataset):
             target = torch.zeros(self.raw_dataset.num_answers)
             for ans, score in label.items():
                 target[self.raw_dataset.ans2label[ans]] = score
-            return ques_id, feats, boxes, ques, target, img_id, original_boxes
+            return ques_id, feats, boxes, ques, target, img_id, original_boxes, ans_type
         else:
             return ques_id, feats, boxes, ques
 

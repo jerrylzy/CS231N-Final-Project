@@ -163,72 +163,78 @@ class VQA:
 
         # sample = random.randint(0, len(loader) - 1)
         sample = 450
+        img_no = 0
+        output_folder = 'output/'
         for i, datum_tuple in enumerate(loader):
-            if i == sample:
-                ques_id, feats, boxes, sent, _, img_id, original_boxes = datum_tuple
-                with torch.no_grad():
-                    print('image id: ', img_id[0])
-                    print('question id: ', ques_id[0].item())
-                    pic = img_id[0]
-                    question = sent[0].replace("?", "").split()
+            ques_id, feats, boxes, sent, _, img_id, original_boxes, ans_type = datum_tuple
+            if ans_type[0] != 'number':
+                continue
 
-                    ## draw bounding box
-                    if plot_bb == True:
-                        image = cv2.imread(pic+'.jpg')
-                        target_ob = [25, 19, 21]
-                        color = [(0,0,255), (0,165,255), (0,255,255)]
-                        for o in range(len(target_ob)):
-                            box = original_boxes[0][target_ob[o]].cpu().numpy()
-                            image = cv2.rectangle(image, (int(box[0]), int(box[1])),
-                                                     (int(box[2]), int(box[3])), color[o], 2)
-                        cv2.imwrite('bbImage.png', image)
+            with torch.no_grad():
+                print('image id: ', img_id[0])
+                print('question id: ', ques_id[0].item())
+                pic = img_id[0]
+                question = sent[0].replace("?", "").split()
 
-                    feats, boxes = feats.cuda(), boxes.cuda()
-                    logit = self.model(feats, boxes, sent)
-                    print(logit)
-                    logit = nn.Softmax(dim=1)(logit)
+                ## draw bounding box
+                if plot_bb == True:
+                    image = cv2.imread(f'data/mscoco/val2014/{pic}.jpg')
+                    target_ob = [25, 19, 21]
+                    color = [(0,0,255), (0,165,255), (0,255,255)]
+                    for o in range(len(target_ob)):
+                        box = original_boxes[0][target_ob[o]].cpu().numpy()
+                        image = cv2.rectangle(image, (int(box[0]), int(box[1])),
+                                                    (int(box[2]), int(box[3])), color[o], 2)
+                    cv2.imwrite(f'{output_folder}bbImage{img_no}_{question}.png', image)
 
-                    # plot attention map
-                    if plot_attention == True:
-                        for j in range(5):
-                            attn_wgts = torch.load('attn_wgts_{}.pt'.format(j))
-                            attn_wgts = attn_wgts[0][1:1+len(question)].flip([0]).cpu().numpy()
-                            fig = go.Figure(data=go.Heatmap(
-                                z=attn_wgts,
-                                y=question[::-1]
-                                ))
-                            fig.update_layout(
-                                title='Attention map of layer {}'.format(j),
-                                yaxis_title='Sentence',
-                                xaxis_title='Objects'
-                            )
-                            fig.write_image('atten_vis_{}_{}.png'.format(j, ques_id[0].item()))
-                            fig.show()
+                feats, boxes = feats.cuda(), boxes.cuda()
+                logit = self.model(feats, boxes, sent)
+                print(logit)
+                logit = nn.Softmax(dim=1)(logit)
 
-                    scores, labels = torch.topk(logit, 5, dim=1)
-                    answers = []
-                    scores = scores[0]
-                    labels = labels[0]
-                    scores = scores.cpu().numpy() * 100
-                    for label in labels.cpu().numpy():
-                        answers.append(dset.label2ans[label])
-
-                    # plot confidence level
-                    if plot_confidence == True:
-                        fig = go.Figure(data=[go.Bar(
-                            x=scores, y=answers,
-                            text=scores,
-                            textposition='auto',
-                            orientation='h',
-                            marker=dict(color='lightsalmon')
-                        )])
-                        fig.update_traces(texttemplate='%{x:.2f}')
+                # plot attention map
+                if plot_attention == True:
+                    for j in range(5):
+                        attn_wgts = torch.load(f'{output_folder}attn_wgts_{img_no}_{j}.pt')
+                        attn_wgts = attn_wgts[0][1:1+len(question)].flip([0]).cpu().numpy()
+                        fig = go.Figure(data=go.Heatmap(
+                            z=attn_wgts,
+                            y=question[::-1]
+                            ))
                         fig.update_layout(
-                            title='Predicted confidence of top-5 answers <br> {}'.format(sent[0]),
-                            yaxis_title='Answers',
-                            xaxis_title='Confidence'
+                            title=f'Attention map of layer {j} for image {img_no}',
+                            yaxis_title='Sentence',
+                            xaxis_title='Objects'
                         )
-                        fig.write_image('SampleQuestionConfidence_{}.png'.format(ques_id[0].item()))
+                        fig.write_image(f'{output_folder}atten_vis_{img_no}_{j}_{ques_id[0].item()}.png')
+                        fig.show()
+
+                scores, labels = torch.topk(logit, 5, dim=1)
+                answers = []
+                scores = scores[0]
+                labels = labels[0]
+                scores = scores.cpu().numpy() * 100
+                for label in labels.cpu().numpy():
+                    answers.append(dset.label2ans[label])
+
+                # plot confidence level
+                if plot_confidence == True:
+                    fig = go.Figure(data=[go.Bar(
+                        x=scores, y=answers,
+                        text=scores,
+                        textposition='auto',
+                        orientation='h',
+                        marker=dict(color='lightsalmon')
+                    )])
+                    fig.update_traces(texttemplate='%{x:.2f}')
+                    fig.update_layout(
+                        title=f'Predicted confidence of top-5 answers <br> {sent[0]} for image {img_no}',
+                        yaxis_title='Answers',
+                        xaxis_title='Confidence'
+                    )
+                    fig.write_image(f'{output_folder}SampleQuestionConfidence_{img_no}_{ques_id[0].item()}.png')
+            img_no += 1
+            if img_no == 10:
                 break
 
     def evaluate(self, eval_tuple: DataTuple, dump=None):
@@ -284,8 +290,8 @@ if __name__ == "__main__":
                                shuffle=False, drop_last=False),
                 dump=os.path.join(args.output, 'minival_predict.json'),
                 plot_bb=True,
-                plot_attention=False,
-                plot_confidence=False
+                plot_attention=True,
+                plot_confidence=True
             )
         else:
             assert False, "No such test option for %s" % args.test
