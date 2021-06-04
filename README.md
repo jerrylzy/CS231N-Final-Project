@@ -133,6 +133,25 @@ The results with the code base are also publicly shown on the [VQA 2.0 leaderboa
 https://evalai.cloudcv.org/web/challenges/challenge-page/163/leaderboard/498
 ) with entry `LXMERT github version`.
 
+#### Visualization
+
+The following command can be used to produce visualization of top 3 most attended boxes, top 5 most probable answers and attention weight maps. `vqa_finetune_on_gqa_visual` is the name of the folder for the visualization result.
+
+```bash
+bash run/vqa_visualize.sh 0 vqa_finetune_on_gqa_visual --test val --load snap/vqa/vqa_lxr955/BEST
+```
+You can change the types of questions you want to visualize in `src/tasks/vqa_visualization.py`.
+```python
+# ... other code ...
+
+        output_folder = 'output/'
+        for i, datum_tuple in enumerate(loader):
+            ques_id, feats, boxes, sent, _, img_id, original_boxes, ans_type = datum_tuple
+            if ans_type[0] != 'number':
+                continue
+
+# ... other code ...
+```
 
 ### GQA
 
@@ -216,6 +235,30 @@ The testing accuracy with exactly this code is **60.00%** for test-dev and **60.
 The results with the code base are also publicly shown on the [GQA leaderboard](
 https://evalai.cloudcv.org/web/challenges/challenge-page/225/leaderboard
 ) with entry `LXMERT github version`.
+
+### VQA-GQA Joint Training
+Fine-tuning
+
+1. Make sure you completed step 1 - 3 from VQA fine-tuning and GQA fine-tuning above.
+
+2. Before fine-tuning on whole joint training+validation set, verifying the script and model on a small training set (512 images) is recommended. 
+The first argument `0` is GPU id. The second argument `vqa_gqa_lxr955_tiny` is the name of this experiment.
+    ```bash
+    bash run/vqa_gqa_finetune.sh 0 vqa_gqa_lxr955_tiny --tiny
+    ```
+
+3. If no bug came out, then the model is ready to be trained on the whole GQA corpus (train + validation), and validate on the testdev set:
+    ```bash
+    bash run/vqa_gqa_finetune.sh 0 vqa_gqa_lxr955
+    ```
+It takes around 28 hours (7 hours per epoch * 4 epochs) to converge on a single Tesla T4. 
+The **logs** and **model snapshots** will be saved under folder `snap/vqa_gqa/vqa_gqa_lxr955`. 
+The validation result after training will be around **66.04%**. 
+
+#### Validation + Test
+Follow the validation steps of VQA and GQA respetively to get the validation and test results.
+
+
 
 ### NLVR2
 
