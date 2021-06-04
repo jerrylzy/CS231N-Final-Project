@@ -140,7 +140,7 @@ The following command can be used to produce visualization of top 3 most attende
 ```bash
 bash run/vqa_visualize.sh 0 vqa_finetune_on_gqa_visual --test val --load snap/vqa/vqa_lxr955/BEST
 ```
-You can change the types of questions you want to visualize in `src/tasks/vqa_visualization.py`.
+You can change the types of questions you want to visualize in `src/tasks/vqa_visualization.py`. For example, the following code will only visualize questions that belong to the "number" category.
 ```python
 # ... other code ...
 
